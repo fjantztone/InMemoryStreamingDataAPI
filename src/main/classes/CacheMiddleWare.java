@@ -2,8 +2,11 @@ import com.google.gson.*;
 import sketching.Cache;
 import sketching.CacheConfig;
 import sketching.NamedCache;
+import spark.QueryParamsMap;
 import spark.Request;
 import spark.Response;
+import utils.JsonUtil;
+import utils.ParseUtil;
 
 import javax.servlet.MultipartConfigElement;
 import javax.servlet.ServletException;
@@ -11,8 +14,12 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.nio.file.Files;
+import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -32,6 +39,8 @@ public class CacheService {
             JsonParser jsonParser = new JsonParser();
             JsonElement jsonElement = jsonParser.parse(req.body());
             JsonObject root = jsonElement.getAsJsonObject();
+            //write to db
+
             JsonElement json = root.get("options");
             GsonBuilder gsonBuilder = new GsonBuilder();
             gsonBuilder.registerTypeAdapter(CacheConfig.class, new CacheConfigDeserializer());
@@ -48,20 +57,22 @@ public class CacheService {
         }
 
     }
-
     public static CacheConfig editCache(Request req, Response res) {
 
         try {
             JsonParser jsonParser = new JsonParser();
             JsonElement jsonElement = jsonParser.parse(req.body());
-            String cacheName = req.params(":name");
+
             JsonObject root = jsonElement.getAsJsonObject();
             JsonElement json = root.get("options");
+
+
             GsonBuilder gsonBuilder = new GsonBuilder();
             gsonBuilder.registerTypeAdapter(CacheConfig.class, new CacheConfigDeserializer());
             Gson gson = gsonBuilder.create();
-
             CacheConfig cc = gson.fromJson(json, CacheConfig.class);
+            String cacheName = cc.getCacheName();
+
             Cache cache = getCache(cacheName);
             cache.setCacheConfig(cc);
             return cc;
@@ -79,39 +90,56 @@ public class CacheService {
                 return cache;
             }
         }
-        throw new IllegalArgumentException(String.format("Cachename: %s does not exist.", cacheName));
+        throw new IllegalArgumentException(String.format("Cache with name %s does not exist.", cacheName));
     }
-
-    public static ResponseText createTupleInCache(Request req, Response res) {
+    //writeThrough key in cache?
+    public static Object putKey(Request req, Response res) {
         JsonParser jsonParser = new JsonParser();
         JsonElement jsonElement = jsonParser.parse(req.body());
-        String cacheName = req.params(":name");
 
-        JsonObject jsonObject = jsonElement.getAsJsonObject();
-        Cache cache = getCache(cacheName);
-
-        boolean putted = cache.put(jsonObject, 1);
-        if(putted)
-            return new ResponseText("Successfully inserted tuple.");
-        else
-            throw new IllegalArgumentException("Tuple could not be inserted into cache. Make sure the JSON is correctly formatted.");
+        JsonObject key = jsonElement.getAsJsonObject();
+        Cache cache = getCache(req.params(":name"));
+        return writeThrough(key, cache);
     }
-
-    public static ResponseText uploadTupleToCache(Request req, Response res) throws IOException, ServletException {
-        String cacheName = req.params(":name");
+    //upload keys to cache?
+    public static Object uploadKeys(Request req, Response res) throws IOException, ServletException {
         req.attribute("org.eclipse.jetty.multipartConfig", new MultipartConfigElement("/var/temp"));
+        //use File.read?
         try (InputStream is = req.raw().getPart("uploaded_file").getInputStream();
              BufferedReader br = new BufferedReader(new InputStreamReader(is))) {
-            Cache c = getCache(cacheName);
-            //Ignore if some entries were not correctly parsed
-            br.lines().forEach(c::put);
-            return new ResponseText("Successfully read file to cache.");
+            Cache c = getCache(req.params(":name"));
+            br.lines().forEach(key -> {writeThrough(key, c);});
         }
+        return new ResponseText("Successfully updated valid keys in file to cache.");
+    }
+    //get key in cache?
+
+    public static Object getKeyInCache(Request req, Response res){
+        String cacheName = req.params(":name");
+        String filter = req.params(":filter");
+        JsonObject key = new JsonParser().parse(JsonUtil.toJson(req.queryMap().toMap()).replaceAll("\\[|\\]", "")).getAsJsonObject();
+        System.out.println(key);
+        Cache cache = getCache(cacheName);
+        return cache.get(key, filter);
     }
 
-    public static Object getTupleInCache(Request req, Response res){
-        throw new UnsupportedOperationException();
+
+    protected static Object writeThrough(Object key, Cache cache) {
+
+        JsonObject parsedKey = ParseUtil.parse(key, cache.getCacheConfig().getCacheFields());
+        if(parsedKey != null){
+            cache.put(parsedKey, 1);
+            //{cacheName : cacheName, key: parsedKey}
+
+            //write to cacheName.data[]
+        }
+
+        return null;
     }
-
-
+    public static void initialize(){
+        //for each cacheconfig
+            //create new cache
+            //get all records for that cache
+            //insert into new cache
+    }
 }
