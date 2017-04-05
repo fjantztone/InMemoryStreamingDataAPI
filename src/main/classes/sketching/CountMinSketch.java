@@ -41,16 +41,7 @@ public class CountMinSketch implements Sketch{
         if(key instanceof JsonObject){
             int min = Integer.MAX_VALUE;
             JsonObject json = (JsonObject)key;
-            //try to extract date and insert
-            JsonElement jsonDate = json.get("DATE");
-            LocalDate createdDate;
-            try{
-                createdDate = LocalDate.parse(jsonDate.getAsString());
-            }catch(DateTimeParseException e){
-                createdDate = LocalDate.now();
-            }
 
-            int dyadicRangeIndex = (int)ChronoUnit.DAYS.between(APP_START_DATE, createdDate);
             fnv.set(json.toString());
 
             for(int i = 0; i != depth; i++){
@@ -62,7 +53,7 @@ public class CountMinSketch implements Sketch{
             }
             return min;
         }
-        return -1;
+        return 0;
 
     }
 
