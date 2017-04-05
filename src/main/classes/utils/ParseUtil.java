@@ -2,7 +2,9 @@ package utils;
 
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 import sketching.CacheField;
+import spark.QueryParamsMap;
 
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -17,12 +19,15 @@ import java.util.regex.Pattern;
 public class ParseUtil {
     public static final LocalDate APP_START_DATE = LocalDate.now();
 
-    public static String parseJson(JsonObject json, List<CacheField> allowableCacheFields){
+    public static String parseJson(String json, List<CacheField> allowableCacheFields){
+        JsonParser parser = new JsonParser();
+        JsonElement jsonElement = parser.parse(json);
+        JsonObject jsonObject = jsonElement.getAsJsonObject();
 
-        if(json.size() != allowableCacheFields.size()) return null;
+        if(jsonObject.size() != allowableCacheFields.size()) return null;
         JsonObject out = new JsonObject();
         for(CacheField cacheField : allowableCacheFields){
-            JsonElement fieldElement = json.get(cacheField.getName());
+            JsonElement fieldElement = jsonObject.get(cacheField.getName());
             //Ordered by rules
             if(fieldElement != null && fieldElement.isJsonPrimitive() && fieldElement.getAsString().matches(cacheField.getJsonPattern())){
                 out.addProperty(cacheField.getName(), fieldElement.getAsString());
@@ -31,7 +36,7 @@ public class ParseUtil {
                 return null;
 
         }
-        return json.toString();
+        return out.toString();
     }
     //Log file use pattern
     public static String parseFileEntry(String raw, List<CacheField> allowableCacheFields){
@@ -61,6 +66,11 @@ public class ParseUtil {
                 return null;
         }
         return json.toString();
+    }
+    public static String parseQueryParamsMap(QueryParamsMap queryParamsMap, List<CacheField> allowableCacheFields){
+        String json = JsonUtil.toJson(queryParamsMap.toMap());
+        json = json.replaceAll("\\[|\\]", "");
+        return parseJson(json, allowableCacheFields);
     }
 
     private static String dateFileFilter(String date){

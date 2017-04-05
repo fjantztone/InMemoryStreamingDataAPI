@@ -3,6 +3,7 @@ import sketching.Cache;
 import sketching.CacheConfig;
 import sketching.CacheField;
 import sketching.NamedCache;
+import spark.QueryParamsMap;
 import spark.Request;
 import spark.Response;
 import utils.JsonUtil;
@@ -48,14 +49,22 @@ public class CacheMiddleWare {
     }
     public Object putKey(String key, String cacheName){
 
-        JsonParser parser = new JsonParser();
-        JsonElement json = parser.parse(key);
         List<CacheField> allowableCacheFields = cacheRepository.getAllowableCacheFields(cacheName);
         //nullcheck^
-        key = ParseUtil.parseJson(json.getAsJsonObject(), allowableCacheFields);
+        key = ParseUtil.parseJson(key, allowableCacheFields);
         if(key != null){
             System.out.println("Putting key: " + key);
             return cacheRepository.addCacheKey(key, cacheName);
+        }
+        return null;
+    }
+    public Object getEntry(QueryParamsMap queryParamsMap, String cacheName, String filter){
+        List<CacheField> allowableCacheFields = cacheRepository.getAllowableCacheFields(cacheName);
+        //nullcheck^
+        String key = ParseUtil.parseQueryParamsMap(queryParamsMap, allowableCacheFields);
+        if(key != null){
+            System.out.println("Getting key: " + key);
+            return cacheRepository.getCacheEntry(key, cacheName, filter);
         }
         return null;
     }

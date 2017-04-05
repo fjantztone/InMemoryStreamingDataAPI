@@ -19,7 +19,7 @@ public class App {
                 put("/", "application/json", (req, res) -> cacheMiddleWare.edit(req.body()), json());
                 post("/:name", "application/json", (req, res) -> cacheMiddleWare.putKey(req.body(), req.params(":name")), json());
                 //post("/:name", "multipart/form-data", (req, res) -> cacheMiddleWare.putFile(req.raw().getPart("uploaded_file").getInputStream(), req.params(":name")), json());
-                //get("/:name/:filter/key", (req, res) -> CacheMiddleWare.getKeyInCache(req, res), json());
+                get("/:name/:filter", (req, res) -> cacheMiddleWare.getEntry(req.queryMap(), req.params(":name"), req.params(":filter")), json());
 
                 after("/*", (req, res) -> {
                     res.type("application/json");

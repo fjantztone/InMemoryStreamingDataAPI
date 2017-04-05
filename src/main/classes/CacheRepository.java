@@ -86,25 +86,25 @@ public class CacheRepository {
         return null;
 
     }
-    public Object getCacheEntry(String key, String cacheName){
+    public Object getCacheEntry(String key, String cacheName, String filter){
         Cache cache = getCache(cacheName);
         if(cache != null){
-            return cache.get(key, cacheName);
+            return cache.get(key, filter);
         }
         return null;
     }
     protected void initialize(){
-        Document removedId = Document.parse("{'_id' : 0}");
-        FindIterable<Document> cacheConfigs = database.getCollection("cacheConfigs").find().projection(removedId);
+        //TODO: Fix smarter storage to avoid projections.
+        FindIterable<Document> cacheConfigs = database.getCollection("cacheConfigs").find().projection(Document.parse("{'_id' : 0}"));
         for(Document cc : cacheConfigs){
             String cacheConfig = cc.toJson();
-            System.out.println(cacheConfig);
             Cache cache = createCache(cacheConfig);
-
-            FindIterable<Document> keys = database.getCollection("cacheKeys").find(Document.parse("{'cacheName' : '"+cache.getName()+"'}")).projection(removedId);
+            System.out.println("Loaded new cache: " + cache.getCacheConfig());
+            FindIterable<Document> keys = database.getCollection("cacheKeys").find(Document.parse("{'cacheName' : '"+cache.getName()+"'}")).projection(Document.parse("{'_id' : 0, 'cacheName' : 0}"));
             for(Document key : keys){
                 //Do not add to db
                 cache.put(key.toJson(), 1);
+                System.out.println(key.toJson());
             }
             //Do not add to db
             caches.add(cache);

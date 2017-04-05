@@ -78,13 +78,13 @@ public class NamedCache implements Cache<CacheEntry>{
     }
 
     @Override
-    public CacheEntry put(String key, int value) {
+    public CacheEntry put(String key, int amount) {
         JsonParser parser = new JsonParser();
         JsonElement _key = parser.parse(key);
         JsonObject jsonKey = _key.getAsJsonObject();
         //TODO: Extract datediff etc.
 
-        return new CacheEntry(jsonKey, Integer.valueOf(cms.put(jsonKey, 1)));
+        return new CacheEntry(jsonKey, Integer.valueOf(cms.put(jsonKey, amount)));
 
     }
 
