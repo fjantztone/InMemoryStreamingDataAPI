@@ -7,17 +7,17 @@ import java.util.Map;
 /**
  * Created by heka1203 on 2017-04-05.
  */
-public class CacheEntry implements Map.Entry<JsonObject,Integer> {
-    JsonObject key;
+public class CacheEntry implements Map.Entry<Object,Integer> {
+    Object key;
     Integer value;
 
-    public CacheEntry(JsonObject key, Integer value){
+    public CacheEntry(Object key, Integer value){
         this.key = key;
         this.value = value;
     }
 
     @Override
-    public JsonObject getKey() {
+    public Object getKey() {
         return this.key;
     }
 

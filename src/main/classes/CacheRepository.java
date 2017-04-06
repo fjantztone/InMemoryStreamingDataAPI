@@ -3,16 +3,19 @@ import com.google.gson.GsonBuilder;
 import com.mongodb.MongoClient;
 import com.mongodb.client.FindIterable;
 import com.mongodb.client.MongoDatabase;
+import exceptions.CacheNotFoundException;
+import exceptions.RequiredDateException;
 import org.bson.Document;
 import sketching.Cache;
 import sketching.CacheConfig;
-import sketching.CacheField;
+import sketching.InputField;
 import sketching.NamedCache;
-import utils.JsonUtil;
+import static utils.JsonUtil.*;
+import utils.ParseUtil;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.logging.Level;
+import java.util.TreeMap;
 import java.util.logging.Logger;
 
 /**
@@ -32,8 +35,10 @@ public class CacheRepository {
     public Cache createCache(String cacheConfig){
         CacheConfig _cacheConfig = createCacheConfig(cacheConfig);
         //^ handle parse exception
-        NamedCache cache = new NamedCache(_cacheConfig);
-        return cache;
+        return createCache(_cacheConfig);
+    }
+    public Cache createCache(CacheConfig cacheConfig){
+        return new NamedCache(cacheConfig);
     }
     public CacheConfig createCacheConfig(String cacheConfig){
         GsonBuilder gsonBuilder = new GsonBuilder();
@@ -42,56 +47,36 @@ public class CacheRepository {
         CacheConfig _cacheConfig = gson.fromJson(cacheConfig, CacheConfig.class);
         return _cacheConfig;
     }
-    public CacheConfig editCache(String cacheConfig){
+    public CacheConfig editCache(String cacheConfig) throws CacheNotFoundException {
         CacheConfig _cacheConfig = createCacheConfig(cacheConfig);
         Cache cache = getCache(_cacheConfig.getCacheName());
-        if(cache != null){
-            cache.setCacheConfig(_cacheConfig);
-            return _cacheConfig;
-        }
-        return null;
+        //TODO: write update to DB
+        cache.setCacheConfig(_cacheConfig);
+        return _cacheConfig;
+
     }
     public CacheConfig addCache(Cache cache){
-        Document document = Document.parse(JsonUtil.toJson(cache.getCacheConfig()));
+        Document document = Document.parse(toJson(cache.getCacheConfig()));
         database.getCollection("cacheConfigs").insertOne(document);
         //check if cache already exists!
         caches.add(cache);
         return cache.getCacheConfig();
     }
-    protected Cache getCache(String cacheName){
+    public Cache getCache(String cacheName) throws CacheNotFoundException {
         for (Cache cache : caches) {
             if (cache.getName().equalsIgnoreCase(cacheName)) {
                 return cache;
             }
         }
-        return null;
+        throw new CacheNotFoundException(String.format("Cache with %s does not exist.", cacheName));
     }
-    public List<CacheField> getAllowableCacheFields(String cacheName){
-        Cache cache = getCache(cacheName);
-        if(cache != null){
-            return cache.getCacheConfig().getCacheFields();
-        }
-        return null;
-    }
-    //TODO: return key
-    public Object addCacheKey(String key, String cacheName){
-        Cache cache = getCache(cacheName);
-        if(cache != null){
-            Document _key = Document.parse(key);
-            _key.append("cacheName", cacheName);
-            database.getCollection("cacheKeys").insertOne(_key);
-            return cache.put(key, 1);
-        }
-        System.out.println("Cache not found..");
-        return null;
 
-    }
-    public Object getCacheEntry(String key, String cacheName, String filter){
-        Cache cache = getCache(cacheName);
-        if(cache != null){
-            return cache.get(key, filter);
-        }
-        return null;
+    //TODO: return key
+    public Object addCacheKey(TreeMap<String,String> key, Cache cache){
+        Document _key = Document.parse(toJson(key));
+        _key.append("cacheName", cache.getName());
+        database.getCollection("cacheKeys").insertOne(_key);
+        return cache.put(key, 1);
     }
     protected void initialize(){
         //TODO: Fix smarter storage to avoid projections.
@@ -103,12 +88,10 @@ public class CacheRepository {
             FindIterable<Document> keys = database.getCollection("cacheKeys").find(Document.parse("{'cacheName' : '"+cache.getName()+"'}")).projection(Document.parse("{'_id' : 0, 'cacheName' : 0}"));
             for(Document key : keys){
                 //Do not add to db
-                cache.put(key.toJson(), 1);
-                System.out.println(key.toJson());
+                cache.put(toSortedMap(key), 1);
             }
             //Do not add to db
             caches.add(cache);
         }
     }
-
 }

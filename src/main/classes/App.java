@@ -2,8 +2,9 @@
  * Created by heka1203 on 2017-03-31.
  */
 
-import static utils.JsonUtil.json;
-import static utils.JsonUtil.toJson;
+import exceptions.RequiredDateException;
+
+import static utils.JsonUtil.*;
 import static spark.Spark.*;
 
 public class App {
@@ -26,6 +27,7 @@ public class App {
                 });
                 exception(Exception.class, (e, req, res) -> {
                     res.status(400);
+                    res.type("application/json");
                     res.body(toJson(new ResponseError(e)));
                 });
 

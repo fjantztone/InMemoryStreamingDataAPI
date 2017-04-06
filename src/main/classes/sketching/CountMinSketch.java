@@ -17,7 +17,7 @@ public class CountMinSketch implements Sketch{
     private int width;
     private final int depth;
     private final FNV fnv;
-    private static final LocalDate APP_START_DATE = LocalDate.now();
+    public static final LocalDate APP_START_DATE = LocalDate.now();
 
     /*private static class Emphasis{
         static final double BASE = 1.00;
@@ -37,24 +37,18 @@ public class CountMinSketch implements Sketch{
     }
 
     public synchronized int put(Object key, int amount){
+        int min = Integer.MAX_VALUE;
 
-        if(key instanceof JsonObject){
-            int min = Integer.MAX_VALUE;
-            JsonObject json = (JsonObject)key;
+        fnv.set(key.toString());
 
-            fnv.set(json.toString());
+        for(int i = 0; i != depth; i++){
+            int hash = (fnv.next() & 0x7fffffff) % width;
 
-            for(int i = 0; i != depth; i++){
-                int hash = (fnv.next() & 0x7fffffff) % width;
-
-                register[i*width + hash] += amount/*Emphasis.pre(dateDiff, amount)*/;
-                if(register[i*width + hash] < min)
-                    min = register[i*width + hash];
-            }
-            return min;
+            register[i*width + hash] += amount/*Emphasis.pre(dateDiff, amount)*/;
+            if(register[i*width + hash] < min)
+                min = register[i*width + hash];
         }
-        return 0;
-
+        return min;
     }
 
 }
