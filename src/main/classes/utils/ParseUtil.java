@@ -28,7 +28,6 @@ public class ParseUtil {
     public static TreeMap<String, String> parseJson(String json, List<InputField> jsonFields){
         TreeMap _json = JsonUtil.toSortedMap(new JsonParser().parse(json));
         _json.putIfAbsent("DATE", LocalDate.now().toString());
-
         for(InputField jsonField : jsonFields){
             Object o = _json.get(jsonField.getName());
             if(!(o instanceof String) || !((String) o).matches(jsonField.getRegex())){

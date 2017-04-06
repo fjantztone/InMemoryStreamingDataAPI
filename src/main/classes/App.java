@@ -8,9 +8,10 @@ import static utils.JsonUtil.*;
 import static spark.Spark.*;
 
 public class App {
-    CacheMiddleWare cacheMiddleWare = new CacheMiddleWare();
-    public App(){
-
+    CacheMiddleWare cacheMiddleWare;
+    public App() throws RequiredDateException {
+        cacheMiddleWare = new CacheMiddleWare();
+        port(9090);
         path("/api", () -> {
             //Create CacheController
 
@@ -22,17 +23,23 @@ public class App {
                 //post("/:name", "multipart/form-data", (req, res) -> cacheMiddleWare.putFile(req.raw().getPart("uploaded_file").getInputStream(), req.params(":name")), json());
                 get("/:name/:filter", (req, res) -> cacheMiddleWare.getEntry(req.queryMap(), req.params(":name"), req.params(":filter")), json());
 
-                after("/*", (req, res) -> {
-                    res.type("application/json");
-                });
-                exception(Exception.class, (e, req, res) -> {
-                    res.status(400);
-                    res.type("application/json");
-                    res.body(toJson(new ResponseError(e)));
-                });
-
             });
 
+        });
+        before((req, res) -> {
+            /**
+             * CORS for testing
+             */
+            res.header("Access-Control-Allow-Origin", "*");
+            res.header("Access-Control-Allow-Methods", "PUT, GET, POST, DELETE");
+            res.header("Access-Control-Allow-Headers: Origin, X-Requested-With", "Content-Type, Accept");
+        });
+        after((req, res) -> {
+            res.type("application/json");
+        });
+        exception(Exception.class, (e, req, res) -> {
+            res.status(400);
+            res.body(toJson(new ResponseError(e)));
         });
 
     }

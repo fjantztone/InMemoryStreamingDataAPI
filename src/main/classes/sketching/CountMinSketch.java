@@ -12,7 +12,7 @@ import java.time.temporal.ChronoUnit;
 /**
  * Created by heka1203 on 2017-04-01.
  */
-public class CountMinSketch implements Sketch{
+public class CountMinSketch {
     private int register[];
     private int width;
     private final int depth;
@@ -32,14 +32,15 @@ public class CountMinSketch implements Sketch{
         this.fnv = fnv;
     }
 
-    public int get(Object key) {
-        return put(key, 0);
+    public int get(Object key, int days) {
+        return put(key, days, 0);
     }
 
-    public synchronized int put(Object key, int amount){
+
+    public synchronized int put(Object key, int days, int amount){
         int min = Integer.MAX_VALUE;
 
-        fnv.set(key.toString());
+        fnv.set(key.toString() + String.valueOf(days));
 
         for(int i = 0; i != depth; i++){
             int hash = (fnv.next() & 0x7fffffff) % width;

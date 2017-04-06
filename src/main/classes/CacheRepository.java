@@ -3,6 +3,7 @@ import com.google.gson.GsonBuilder;
 import com.mongodb.MongoClient;
 import com.mongodb.client.FindIterable;
 import com.mongodb.client.MongoDatabase;
+import exceptions.CacheAlreadyExistsException;
 import exceptions.CacheNotFoundException;
 import exceptions.RequiredDateException;
 import org.bson.Document;
@@ -22,13 +23,14 @@ import java.util.logging.Logger;
  * Created by heka1203 on 2017-04-05.
  */
 public class CacheRepository {
+    //TODO: Move to constructor?
     MongoClient mongoClient = new MongoClient("localhost", 27017);
     MongoDatabase database = mongoClient.getDatabase("streamingdata");
     Logger logger = Logger.getLogger(CacheRepository.class.getName());
 
     public List<Cache> caches = new ArrayList<>();
 
-    public CacheRepository(){
+    public CacheRepository() throws RequiredDateException {
         initialize();
     }
 
@@ -47,7 +49,7 @@ public class CacheRepository {
         CacheConfig _cacheConfig = gson.fromJson(cacheConfig, CacheConfig.class);
         return _cacheConfig;
     }
-    public CacheConfig editCache(String cacheConfig) throws CacheNotFoundException {
+    public synchronized CacheConfig editCache(String cacheConfig) throws CacheNotFoundException {
         CacheConfig _cacheConfig = createCacheConfig(cacheConfig);
         Cache cache = getCache(_cacheConfig.getCacheName());
         //TODO: write update to DB
@@ -55,30 +57,39 @@ public class CacheRepository {
         return _cacheConfig;
 
     }
-    public CacheConfig addCache(Cache cache){
+    public synchronized CacheConfig addCache(Cache cache) throws CacheAlreadyExistsException {
+        String cacheName = cache.getName();
+        if(contains(cacheName)) throw new CacheAlreadyExistsException(String.format("A cache with name: %s already exists. Try another cache name.", cacheName));
         Document document = Document.parse(toJson(cache.getCacheConfig()));
         database.getCollection("cacheConfigs").insertOne(document);
-        //check if cache already exists!
         caches.add(cache);
         return cache.getCacheConfig();
     }
-    public Cache getCache(String cacheName) throws CacheNotFoundException {
+    protected boolean contains(String cacheName){
+        try{
+            getCache(cacheName);
+            return true;
+        } catch (CacheNotFoundException e) {
+            return false;
+        }
+    }
+    public synchronized Cache getCache(String cacheName) throws CacheNotFoundException {
         for (Cache cache : caches) {
             if (cache.getName().equalsIgnoreCase(cacheName)) {
                 return cache;
             }
         }
-        throw new CacheNotFoundException(String.format("Cache with %s does not exist.", cacheName));
+        throw new CacheNotFoundException(String.format("Cache with name: %s does not exist. You can create a new cache at route: /api/cache.", cacheName));
     }
 
     //TODO: return key
-    public Object addCacheKey(TreeMap<String,String> key, Cache cache){
+    public synchronized Object addCacheKey(TreeMap<String,String> key, Cache cache) throws RequiredDateException {
         Document _key = Document.parse(toJson(key));
         _key.append("cacheName", cache.getName());
         database.getCollection("cacheKeys").insertOne(_key);
         return cache.put(key, 1);
     }
-    protected void initialize(){
+    protected void initialize() throws RequiredDateException {
         //TODO: Fix smarter storage to avoid projections.
         FindIterable<Document> cacheConfigs = database.getCollection("cacheConfigs").find().projection(Document.parse("{'_id' : 0}"));
         for(Document cc : cacheConfigs){
