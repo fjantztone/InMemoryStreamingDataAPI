@@ -5,14 +5,12 @@ import com.mongodb.client.FindIterable;
 import com.mongodb.client.MongoDatabase;
 import exceptions.CacheAlreadyExistsException;
 import exceptions.CacheNotFoundException;
-import exceptions.RequiredDateException;
+import exceptions.RequiresValidDateException;
 import org.bson.Document;
 import sketching.Cache;
 import sketching.CacheConfig;
-import sketching.InputField;
 import sketching.NamedCache;
 import static utils.JsonUtil.*;
-import utils.ParseUtil;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -30,7 +28,7 @@ public class CacheRepository {
 
     public List<Cache> caches = new ArrayList<>();
 
-    public CacheRepository() throws RequiredDateException {
+    public CacheRepository() throws RequiresValidDateException {
         initialize();
     }
 
@@ -83,13 +81,13 @@ public class CacheRepository {
     }
 
     //TODO: return key
-    public synchronized Object addCacheKey(TreeMap<String,String> key, Cache cache) throws RequiredDateException {
+    public synchronized Object addCacheKey(TreeMap<String,String> key, Cache cache) throws RequiresValidDateException {
         Document _key = Document.parse(toJson(key));
         _key.append("cacheName", cache.getName());
         database.getCollection("cacheKeys").insertOne(_key);
         return cache.put(key, 1);
     }
-    protected void initialize() throws RequiredDateException {
+    protected void initialize() throws RequiresValidDateException {
         //TODO: Fix smarter storage to avoid projections.
         FindIterable<Document> cacheConfigs = database.getCollection("cacheConfigs").find().projection(Document.parse("{'_id' : 0}"));
         for(Document cc : cacheConfigs){

@@ -7,14 +7,15 @@ import java.util.List;
 /**
  * Created by heka1203 on 2017-04-03.
  */
-public class CacheConfig {
+public class CacheConfig implements Validatable {
     private String cacheName;
     private List<InputField> fileFields;
     private List<InputField> jsonFields;
     private Query topQuery;
     private Query frequencyQuery;
 
-    public boolean isNonNull(){
+    @Override
+    public boolean isValid(){
         return  getCacheName() != null && getFileFields() != null && getJsonFields() != null && getTopQuery() != null && getFrequencyQuery() != null;
     }
 

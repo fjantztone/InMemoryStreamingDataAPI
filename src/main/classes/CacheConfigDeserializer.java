@@ -10,7 +10,7 @@ public class CacheConfigDeserializer implements JsonDeserializer<CacheConfig> {
     @Override
     public CacheConfig deserialize(JsonElement json, Type typeOfT, JsonDeserializationContext context) throws JsonParseException {
         CacheConfig cc = new Gson().fromJson(json, CacheConfig.class);
-        if(cc.isNonNull())
+        if(cc.isValid())
             return cc;
         else
             throw new JsonParseException("The required fields are not present.");

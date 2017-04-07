@@ -1,4 +1,4 @@
-import exceptions.RequiredDateException;
+import exceptions.RequiresValidDateException;
 
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -12,9 +12,9 @@ public class Main {
     public static void main(String[] args) {
 
         try {
-            App app = new App();
+            App app = new App(new CacheMiddleWare());
             logger.log(Level.INFO, "Application is running!");
-        } catch (RequiredDateException e) {
+        } catch (RequiresValidDateException e) {
             logger.log(Level.SEVERE, e.getMessage(), e);
         }
     }

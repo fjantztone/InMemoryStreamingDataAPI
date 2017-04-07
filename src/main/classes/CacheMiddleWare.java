@@ -1,19 +1,16 @@
-import exceptions.CacheAlreadyExistsException;
-import exceptions.CacheNotFoundException;
-import exceptions.RequiredDateException;
+import exceptions.*;
 import sketching.Cache;
 import sketching.CacheConfig;
 import sketching.InputField;
 import spark.QueryParamsMap;
-import spark.servlet.SparkApplication;
-import spark.utils.SparkUtils;
+import spark.Request;
+import spark.Response;
 import utils.ParseUtil;
 
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.text.ParseException;
+import javax.servlet.MultipartConfigElement;
+import javax.servlet.ServletException;
+import javax.servlet.http.Part;
+import java.io.*;
 import java.util.List;
 import java.util.Objects;
 import java.util.TreeMap;
@@ -30,52 +27,63 @@ public class CacheMiddleWare {
     protected CacheRepository cacheRepository;
     public static Logger logger = Logger.getLogger(CacheMiddleWare.class.getName());
 
-    public CacheMiddleWare() throws RequiredDateException {
+    public CacheMiddleWare() throws RequiresValidDateException {
         cacheRepository = new CacheRepository();
     }
 
-    public Object create(String cacheConfig) throws CacheNotFoundException, CacheAlreadyExistsException {
-        Cache cache = cacheRepository.createCache(cacheConfig);
-        System.out.println(cache);
-        CacheConfig _cacheConfig = cacheRepository.addCache(cache);
+    public Object create(Request req, Response res) throws CacheNotFoundException, CacheAlreadyExistsException {
+        Cache cache = cacheRepository.createCache(req.body());
+        CacheConfig cacheConfig = cacheRepository.addCache(cache);
 
-        return _cacheConfig;
+        return cacheConfig;
     }
-    public Object edit(String cacheConfig) throws CacheNotFoundException {
-        return cacheRepository.editCache(cacheConfig);
+    public Object edit(Request req, Response res) throws CacheNotFoundException {
+        return cacheRepository.editCache(req.body());
     }
 
-    public Object putFile(InputStream is, String cacheName) throws IOException, CacheNotFoundException {
-        try (BufferedReader br = new BufferedReader(new InputStreamReader(is))) {
+    public Object putFile(Request req, Response res) throws IOException, CacheNotFoundException, ServletException {
+        req.attribute("org.eclipse.jetty.multipartConfig", new MultipartConfigElement("/temp")); //For test
+        Part file = req.raw().getPart("uploaded_file");
+        if(file == null) throw new FileNotFoundException("No file was found. Make sure that the input field is named: 'uploaded_file'.");
+
+        try (BufferedReader br = new BufferedReader(new InputStreamReader(req.raw().getPart("uploaded_file").getInputStream()))) {
+            String cacheName = req.params(":name");
+            logger.log(Level.INFO, String.format("Trying to upload a file to cache: %s!", cacheName));
             Cache cache = cacheRepository.getCache(cacheName);
             List<InputField> fileFields = cache.getCacheConfig().getFileFields();
-            br.lines().map(line -> ParseUtil.parseFileRow(line, fileFields)).filter(Objects::nonNull).forEach(key -> {
+            br.lines().map(line -> {
                 try {
+                    return ParseUtil.parseFileRow(line, fileFields);
+                } catch (RequiresValidDateException e) {
+                    logger.log(Level.SEVERE, e.getMessage(), e);
+                    return null;
+                }
+            }).filter(Objects::nonNull).forEach(key -> {
+                try {
+                    System.out.println("Putting key");
                     cacheRepository.addCacheKey(key, cache);
-                } catch (RequiredDateException e) {
+                } catch (RequiresValidDateException e) {
                     logger.log(Level.SEVERE, e.getMessage(), e);
                 }
             });
-            return new ResponseText("Uploaded file successfully");
         }
+
+        return new ResponseText("Uploaded file successfully");
     }
-    public Object putKey(String key, String cacheName) throws CacheNotFoundException, RequiredDateException {
-        Cache cache = cacheRepository.getCache(cacheName);
+    public Object putKey(Request req, Response res) throws CacheNotFoundException, RequiresValidDateException {
+        Cache cache = cacheRepository.getCache(req.params(":name"));
         List<InputField> jsonFields = cache.getCacheConfig().getJsonFields();
         //nullcheck^
-        TreeMap<String,String> parsedKey = ParseUtil.parseJson(key, jsonFields);
-        if(parsedKey != null){
-            System.out.println("Putting key: " + parsedKey);
-            return cacheRepository.addCacheKey(parsedKey, cache);
-        }
-        return null;
-    }
-    public Object getEntry(QueryParamsMap queryParamsMap, String cacheName, String filter) throws RequiredDateException, CacheNotFoundException {
-        Cache cache = cacheRepository.getCache(cacheName);
-        TreeMap<String,String> parsedKey = ParseUtil.parseQueryParams(queryParamsMap);
-        System.out.println("Requesting key: " + parsedKey);
+        TreeMap<String,String> parsedKey = ParseUtil.parseJson(req.body(), jsonFields); //Block with filter if not as expected
+        System.out.println("Putting key: " + parsedKey);
+        return cacheRepository.addCacheKey(parsedKey, cache);
 
-        return cache.get(parsedKey, filter);
+    }
+    public Object getEntry(Request req, Response res) throws CacheNotFoundException, FilterNotFoundException, RequiresDateException, RequiresValidDateException {
+        Cache cache = cacheRepository.getCache(req.params(":name"));
+        TreeMap<String,String> parsedKey = ParseUtil.parseQueryParams(req.queryMap(), req.params(":filter"));
+        //^nullcheck
+        return cache.get(parsedKey, req.params(":filter"));
 
     }
 

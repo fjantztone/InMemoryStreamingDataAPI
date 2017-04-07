@@ -1,9 +1,7 @@
 /**
  * Created by heka1203 on 2017-04-06.
  */
-import com.google.gson.Gson;
-import com.google.gson.JsonObject;
-import com.google.gson.JsonParser;
+import com.google.gson.*;
 import org.junit.AfterClass;
 
 import static com.sun.tools.internal.ws.wsdl.parser.Util.fail;
@@ -38,6 +36,18 @@ public class CacheTesting {
     }
 
     @Test
+    public void createCache(){
+        JsonObject cache = new JsonObject();
+        cache.addProperty("cacheName", "sales");
+        JsonArray fileFields = new JsonArray();
+        JsonObject fileField1 = new JsonObject();
+
+        /*continue here*/
+    }
+
+
+
+    @Test
     public void putKey(){
         JsonObject obj = new JsonObject();
         obj.addProperty("ITEM", "7214_HB4");
@@ -49,18 +59,28 @@ public class CacheTesting {
         Map<String, String> json = res.json();
         assertNotNull(json.get("key"));
         assertNotNull(json.get("value"));
+
+        JsonElement tree = new Gson().toJsonTree(json.get("key"));
+        JsonObject treeObj = tree.getAsJsonObject();
+
+        assertEquals(treeObj.get("ITEM").getAsString(), "7214_HB4");
+        assertEquals(treeObj.get("KOMMANDO").getAsString(), "GSM_REG_AB");
+        assertEquals(treeObj.get("RETAILER").getAsString(), "12345");
+
     }
     @Test
-    public void putKey2(){
+    public void putKeyToNonExistingCache(){
         JsonObject obj = new JsonObject();
         obj.addProperty("ITEM", "7214_HB4");
         obj.addProperty("KOMMANDO", "GSM_REG_AB");
         obj.addProperty("RETAILER", "12345");
         TestResponse res = jsonDataRequest("POST", "/salesf", new Gson().toJson(obj));
+        Map json = res.json();
 
-        System.out.println(res.status);
         assertEquals(res.status, 400);
+        assertNotNull(json.get("message"));
     }
+
 
     private TestResponse jsonDataRequest(String method, String path, String json){
         try {
@@ -75,9 +95,13 @@ public class CacheTesting {
             try(OutputStream os = conn.getOutputStream()){
                 os.write(json.getBytes("UTF-8"));
             }
-
-            // read the response
-            InputStream in = new BufferedInputStream(conn.getInputStream());
+            InputStream in;
+            if (conn.getResponseCode() < HttpURLConnection.HTTP_BAD_REQUEST) {
+                in = new BufferedInputStream(conn.getInputStream());
+            } else {
+                /* error from server */
+                in = new BufferedInputStream(conn.getErrorStream());
+            }
             String body = IOUtils.toString(in);
             in.close();
             conn.disconnect();
@@ -96,8 +120,6 @@ public class CacheTesting {
         public final int status;
 
         public TestResponse(int status, String body) {
-            System.out.println(status);
-            System.out.println(body);
             this.status = status;
             this.body = body;
         }
