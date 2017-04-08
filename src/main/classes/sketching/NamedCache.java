@@ -24,13 +24,13 @@ public class NamedCache implements Cache<CacheEntry>{
         this.cacheConfig = Objects.requireNonNull(cacheConfig);
         final int width = 1 << 14;
         final int depth = 4;
-        final int numberOfSketches = (int)Math.ceil(cacheConfig.getFrequencyQuery().getWindow() / Math.log(2));
+        final int numberOfSketches = (int)Math.ceil(cacheConfig.getExpireDays() / Math.log(2));
         this.cms = new CountMinSketch(width, depth, new FNV());
         this.cmr = new CountMinRange(width, depth, numberOfSketches);
     }
 
     @Override
-    public List<CacheEntry> get(TreeMap<String,String> key, String filter) throws RequiresValidDateException {
+    public List<CacheEntry> get(TreeMap<String,String> key, String filter)  {
 
         switch(filter){
             case "point":
@@ -46,10 +46,10 @@ public class NamedCache implements Cache<CacheEntry>{
         }
 
     }
-    public List<CacheEntry> pointGet(TreeMap<String,String> key) throws RequiresValidDateException {
+    public List<CacheEntry> pointGet(TreeMap<String,String> key) {
         return Arrays.asList(put(key, 0));
     }
-    public List<CacheEntry> pointsGet(TreeMap<String,String> key) throws RequiresValidDateException {
+    public List<CacheEntry> pointsGet(TreeMap<String,String> key) {
 
         List<CacheEntry> cacheEntries = new ArrayList<>();
         LocalDate startDate = LocalDate.parse(key.remove("STARTDATE"));
@@ -68,19 +68,29 @@ public class NamedCache implements Cache<CacheEntry>{
         List<CacheEntry> cacheEntries = new ArrayList<>();
         LocalDate startDate = LocalDate.parse(key.remove("STARTDATE"));
         LocalDate endDate = LocalDate.parse(key.remove("ENDDATE"));
-        int start = (int) ChronoUnit.DAYS.between(ParseUtil.APP_START_DATE, startDate);
-        int end = (int) ChronoUnit.DAYS.between(ParseUtil.APP_START_DATE, endDate);
-        return Arrays.asList(new CacheEntry(key, cmr.get(key, start, end)));
+        LocalDate createdDate = cacheConfig.getCreatedDate(); //cache created date
+
+        int start = (int) ChronoUnit.DAYS.between(createdDate, startDate); //TODO: APP_START_DATE should be this caches creation date?
+        int end = (int) ChronoUnit.DAYS.between(createdDate, endDate);
+        int rangeFrequency = cmr.get(key, start, end);
+        //putting the ISO-date back for nicer client response
+        key.put("STARTDATE", startDate.toString());
+        key.put("ENDDATE", endDate.toString());
+
+        return Arrays.asList(new CacheEntry(key, rangeFrequency));
 
     }
     @Override
     public CacheEntry put(TreeMap<String,String> key, int amount) {
-
         LocalDate localDate = LocalDate.parse(key.remove("DATE"));
-        int daysBetween = (int) ChronoUnit.DAYS.between(CountMinSketch.APP_START_DATE, localDate);
-        //TODO: SPLIT FIELDS??
+        LocalDate createdDate = cacheConfig.getCreatedDate();
+
+        int daysBetween = (int) ChronoUnit.DAYS.between(createdDate, localDate);
+        //TODO: SPLIT FIELDS EQUAL TO LEVELS??
         int pointFrequency = cms.put(key, daysBetween, amount);
-        cmr.put(key, daysBetween, amount);
+        cmr.put(key, daysBetween, amount); //bottleneck?
+
+        key.put("DATE", localDate.toString()); //putting the ISO-date back for nicer client response
         return new CacheEntry(key, pointFrequency);
 
 

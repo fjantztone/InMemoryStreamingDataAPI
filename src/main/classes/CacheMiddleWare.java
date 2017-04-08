@@ -11,6 +11,7 @@ import javax.servlet.MultipartConfigElement;
 import javax.servlet.ServletException;
 import javax.servlet.http.Part;
 import java.io.*;
+import java.lang.instrument.UnmodifiableClassException;
 import java.util.List;
 import java.util.Objects;
 import java.util.TreeMap;
@@ -41,7 +42,7 @@ public class CacheMiddleWare {
         return cacheRepository.editCache(req.body());
     }
 
-    public Object putFile(Request req, Response res) throws IOException, CacheNotFoundException, ServletException {
+    public Object putFile(Request req, Response res) throws IOException, CacheNotFoundException, ServletException, RequiresValidDateException {
         req.attribute("org.eclipse.jetty.multipartConfig", new MultipartConfigElement("/temp")); //For test
         Part file = req.raw().getPart("uploaded_file");
         if(file == null) throw new FileNotFoundException("No file was found. Make sure that the input field is named: 'uploaded_file'.");
@@ -51,24 +52,19 @@ public class CacheMiddleWare {
             logger.log(Level.INFO, String.format("Trying to upload a file to cache: %s!", cacheName));
             Cache cache = cacheRepository.getCache(cacheName);
             List<InputField> fileFields = cache.getCacheConfig().getFileFields();
-            br.lines().map(line -> {
-                try {
-                    return ParseUtil.parseFileRow(line, fileFields);
-                } catch (RequiresValidDateException e) {
-                    logger.log(Level.SEVERE, e.getMessage(), e);
-                    return null;
-                }
-            }).filter(Objects::nonNull).forEach(key -> {
-                try {
-                    System.out.println("Putting key");
+            int numberOfKeys = 0;
+            for (String line; (line = br.readLine()) != null; ) {
+                TreeMap<String, String> key = ParseUtil.parseFileRow(line, fileFields);
+                if (key != null){
                     cacheRepository.addCacheKey(key, cache);
-                } catch (RequiresValidDateException e) {
-                    logger.log(Level.SEVERE, e.getMessage(), e);
+                    ++numberOfKeys;
                 }
-            });
+
+                //ignore
+            }
+            return new ResponseText(String.format("File was uploaded successfully. %d keys were inserted to cache.", numberOfKeys)); //TODO: REturn number of keys inserted?
         }
 
-        return new ResponseText("Uploaded file successfully");
     }
     public Object putKey(Request req, Response res) throws CacheNotFoundException, RequiresValidDateException {
         Cache cache = cacheRepository.getCache(req.params(":name"));

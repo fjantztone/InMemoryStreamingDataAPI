@@ -2,6 +2,7 @@ package sketching;
 
 import utils.JsonUtil;
 
+import java.time.LocalDate;
 import java.util.List;
 
 /**
@@ -9,34 +10,40 @@ import java.util.List;
  */
 public class CacheConfig implements Validatable {
     private String cacheName;
+    private int expireDays; // days
+
     private List<InputField> fileFields;
     private List<InputField> jsonFields;
-    private Query topQuery;
-    private Query frequencyQuery;
+    private List<String> topLevels;
+    private List<String> frequencyLevels;
+
+    public final LocalDate createdDate = LocalDate.now();
+
 
     @Override
     public boolean isValid(){
-        return  getCacheName() != null && getFileFields() != null && getJsonFields() != null && getTopQuery() != null && getFrequencyQuery() != null;
+        return  getCacheName() != null && getFileFields() != null && getJsonFields() != null && getTopLevels() != null && getFrequencyLevels() != null; //TODO: fix validation and error handling
     }
 
     public String getCacheName() {
         return cacheName;
     }
-
+    public int getExpireDays(){return expireDays;}
     public List<InputField> getFileFields() {
         return fileFields;
     }
     public List<InputField> getJsonFields() {
         return jsonFields;
     }
-
-    public Query getTopQuery() {
-        return topQuery;
+    public List<String> getTopLevels() {
+        return topLevels;
+    }
+    public List<String> getFrequencyLevels() {
+        return frequencyLevels;
     }
 
-    public Query getFrequencyQuery() {
-        return frequencyQuery;
-    }
+    public LocalDate getCreatedDate(){ return createdDate; }
+    public LocalDate getExpireDate(){ return createdDate.plusDays(getExpireDays()); }
 
     public String toString(){
         return JsonUtil.toJson(this);
