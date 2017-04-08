@@ -1,13 +1,11 @@
-package sketching;
+package caching;
 
-import exceptions.RequiresValidDateException;
 import hashing.FNV;
-import utils.ParseUtil;
 
 import java.time.LocalDate;
-import java.time.format.DateTimeParseException;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
@@ -22,11 +20,7 @@ public class NamedCache implements Cache<CacheEntry>{
 
     public NamedCache(CacheConfig cacheConfig) {
         this.cacheConfig = Objects.requireNonNull(cacheConfig);
-        final int width = 1 << 14;
-        final int depth = 4;
-        final int numberOfSketches = (int)Math.ceil(cacheConfig.getExpireDays() / Math.log(2));
-        this.cms = new CountMinSketch(width, depth, new FNV());
-        this.cmr = new CountMinRange(width, depth, numberOfSketches);
+        initializeSketches();
     }
 
     @Override
@@ -40,7 +34,7 @@ public class NamedCache implements Cache<CacheEntry>{
             case "range":
                 return rangeGet(key);
             case "top":
-                return null;
+                return null; //unsupported
             default:
                 return null;
         }
@@ -70,7 +64,7 @@ public class NamedCache implements Cache<CacheEntry>{
         LocalDate endDate = LocalDate.parse(key.remove("ENDDATE"));
         LocalDate createdDate = cacheConfig.getCreatedDate(); //cache created date
 
-        int start = (int) ChronoUnit.DAYS.between(createdDate, startDate); //TODO: APP_START_DATE should be this caches creation date?
+        int start = (int) ChronoUnit.DAYS.between(createdDate, startDate);
         int end = (int) ChronoUnit.DAYS.between(createdDate, endDate);
         int rangeFrequency = cmr.get(key, start, end);
         //putting the ISO-date back for nicer client response
@@ -87,6 +81,13 @@ public class NamedCache implements Cache<CacheEntry>{
 
         int daysBetween = (int) ChronoUnit.DAYS.between(createdDate, localDate);
         //TODO: SPLIT FIELDS EQUAL TO LEVELS??
+
+        if(hasKeysExpired(localDate)){ //TODO: Run in separate thread?
+            int numberOfExpiredKeys = (int) ChronoUnit.DAYS.between(cacheConfig.getExpireDate(), localDate);
+            adjust(key, numberOfExpiredKeys);
+        }
+
+
         int pointFrequency = cms.put(key, daysBetween, amount);
         cmr.put(key, daysBetween, amount); //bottleneck?
 
@@ -95,6 +96,36 @@ public class NamedCache implements Cache<CacheEntry>{
 
 
     }
+    /*
+    * Time stuff
+    * */
+    protected boolean hasKeysExpired(LocalDate localDate){
+        return localDate.isEqual(cacheConfig.getExpireDate()) || localDate.isAfter(cacheConfig.getExpireDate());
+    }
+    protected boolean hasExpireTimeWrappedAround(int numberOfExpiredKeys){
+        return numberOfExpiredKeys == cacheConfig.getExpireDays();
+    }
+    protected void adjust(Object key, int numberOfExpiredKeys){
+
+        if(hasExpireTimeWrappedAround(numberOfExpiredKeys)){ //it is safe to reinitialize whole structure
+            logger.log(Level.INFO, String.format("Cache: %s has wrapped around its expire time. Safely re-initializing it.", getName()));
+            initializeSketches();
+            cacheConfig.setCreatedDate(LocalDate.now()); //Update expire date
+        } else {
+            logger.log(Level.INFO, String.format("Found %d expired key candidates in cache, attempting to remove them.", numberOfExpiredKeys + 1));
+            for(int day = 0; day < numberOfExpiredKeys; day++){ //TODO: Increment created date?
+                cms.remove(key, day); //VERY CHEAP OPERATION SO NP
+                cmr.remove(key, day);
+            }
+        }
+    }
+    protected void initializeSketches(){
+        final int width = 1 << 14;
+        final int depth = 4;
+        final int numberOfSketches = (int)Math.ceil(cacheConfig.getExpireDays() / Math.log(2));
+        this.cms = new CountMinSketch(width, depth, new FNV());
+        this.cmr = new CountMinRange(width, depth, numberOfSketches);
+    }
     @Override
     public String getName() {
         return cacheConfig.getCacheName();
@@ -102,11 +133,13 @@ public class NamedCache implements Cache<CacheEntry>{
 
     public void setCacheConfig(CacheConfig cacheConfig) {
         this.cacheConfig = Objects.requireNonNull(cacheConfig);
-    }
+    } //TODO: override
 
     @Override
     public CacheConfig getCacheConfig() {
         return this.cacheConfig;
     }
+
+
 
 }

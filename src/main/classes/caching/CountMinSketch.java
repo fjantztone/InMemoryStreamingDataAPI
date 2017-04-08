@@ -1,13 +1,6 @@
-package sketching;
+package caching;
 
-import com.google.gson.Gson;
-import com.google.gson.JsonElement;
-import com.google.gson.JsonObject;
 import hashing.FNV;
-
-import java.time.LocalDate;
-import java.time.format.DateTimeParseException;
-import java.time.temporal.ChronoUnit;
 
 /**
  * Created by heka1203 on 2017-04-01.
@@ -17,7 +10,6 @@ public class CountMinSketch {
     private int width;
     private final int depth;
     private final FNV fnv;
-    public static final LocalDate APP_START_DATE = LocalDate.now();
 
     /*private static class Emphasis{
         static final double BASE = 1.00;
@@ -34,6 +26,12 @@ public class CountMinSketch {
 
     public int get(Object key, int days) {
         return put(key, days, 0);
+    }
+
+    public int remove(Object key, int days){
+        int frequency = get(key, days);
+        put(key, days, -frequency);
+        return frequency;
     }
 
 

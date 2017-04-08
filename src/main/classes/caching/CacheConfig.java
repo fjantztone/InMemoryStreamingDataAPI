@@ -1,4 +1,4 @@
-package sketching;
+package caching;
 
 import utils.JsonUtil;
 
@@ -17,7 +17,7 @@ public class CacheConfig implements Validatable {
     private List<String> topLevels;
     private List<String> frequencyLevels;
 
-    public final LocalDate createdDate = LocalDate.now();
+    private LocalDate createdDate = LocalDate.now();
 
 
     @Override
@@ -44,6 +44,9 @@ public class CacheConfig implements Validatable {
 
     public LocalDate getCreatedDate(){ return createdDate; }
     public LocalDate getExpireDate(){ return createdDate.plusDays(getExpireDays()); }
+    public void setCreatedDate(LocalDate createdDate){
+        this.createdDate = createdDate;
+    }
 
     public String toString(){
         return JsonUtil.toJson(this);

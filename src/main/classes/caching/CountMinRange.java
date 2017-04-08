@@ -1,4 +1,4 @@
-package sketching;
+package caching;
 
 import hashing.FNV;
 
@@ -16,11 +16,13 @@ public class CountMinRange{
         for(int i = 0; i < this.numberOfSketches; i++)
             sketches.add(new CountMinSketch(width, depth, new FNV()));
     }
-    public int put(Object key, int days, int amount){
-        int frequency = 0;
+    public void put(Object key, int days, int amount){
         for(int i = 0; i < numberOfSketches; i++)
-            frequency = sketches.get(i).put(key, days/ (1 << i), amount);
-        return frequency;
+            sketches.get(i).put(key, days/ (1 << i), amount);
+    }
+    public void remove(Object key, int days){
+        for(int i = 0; i < numberOfSketches; i++)
+            sketches.get(i).remove(key, days/ (1 << i));
     }
 
     public int get(Object key, int start, int end){

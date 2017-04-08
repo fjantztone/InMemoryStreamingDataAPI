@@ -7,9 +7,9 @@ import exceptions.CacheAlreadyExistsException;
 import exceptions.CacheNotFoundException;
 import exceptions.RequiresValidDateException;
 import org.bson.Document;
-import sketching.Cache;
-import sketching.CacheConfig;
-import sketching.NamedCache;
+import caching.Cache;
+import caching.CacheConfig;
+import caching.NamedCache;
 import static utils.JsonUtil.*;
 
 import java.util.ArrayList;

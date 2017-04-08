@@ -4,10 +4,9 @@ import com.google.gson.JsonParser;
 import exceptions.FilterNotFoundException;
 import exceptions.RequiresDateException;
 import exceptions.RequiresValidDateException;
-import sketching.InputField;
+import caching.InputField;
 import spark.QueryParamsMap;
 
-import javax.annotation.CheckForNull;
 import java.time.LocalDate;
 import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
@@ -27,8 +26,6 @@ import java.util.regex.Pattern;
 *
 * */
 public class ParseUtil {
-    //TODO: Move to each specific cacheconfig
-    public static final LocalDate APP_START_DATE = LocalDate.now();
 
     public static TreeMap<String, String> parseJson(String json, List<InputField> jsonFields) throws RequiresValidDateException {
         TreeMap _json = JsonUtil.toSortedMap(new JsonParser().parse(json));

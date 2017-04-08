@@ -1,5 +1,5 @@
 import com.google.gson.*;
-import sketching.CacheConfig;
+import caching.CacheConfig;
 
 import java.lang.reflect.Type;
 
