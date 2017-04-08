@@ -1,15 +1,15 @@
+package response;
 
 /**
  * Created by heka1203 on 2017-04-03.
  */
-public class ResponseText {
+public class ResponseError {
     private String message;
-
-    public ResponseText(String message, String[] args){
+    public ResponseError(String message, String[] args){
         this.message = String.format(message, args);
     }
-    public ResponseText(String message){
-        this.message = message;
+    public ResponseError(Exception e){
+        this.message = e.getMessage();
     }
 
     public String getMessage(){

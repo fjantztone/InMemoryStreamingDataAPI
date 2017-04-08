@@ -1,6 +1,9 @@
 package caching;
 
 import hashing.FNV;
+import sketches.CountMinRange;
+import sketches.CountMinSketch;
+import sketches.SlidingWindowTopList;
 
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;

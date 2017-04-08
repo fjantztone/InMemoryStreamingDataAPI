@@ -1,5 +1,6 @@
-package caching;
+package sketches;
 
+import caching.CacheEntry;
 import org.apache.commons.collections4.queue.CircularFifoQueue;
 
 import java.util.List;

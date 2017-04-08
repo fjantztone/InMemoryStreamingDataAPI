@@ -1,4 +1,4 @@
-package caching;
+package sketches;
 
 import java.util.Comparator;
 import java.util.TreeMap;

@@ -1,3 +1,5 @@
+package caching;
+
 import com.google.gson.*;
 import caching.CacheConfig;
 

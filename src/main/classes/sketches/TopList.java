@@ -1,5 +1,6 @@
-package caching;
+package sketches;
 
+import caching.CacheEntry;
 import hashing.FNV;
 
 import java.util.ArrayList;
@@ -32,18 +33,8 @@ public class TopList{
         while(!copy.isEmpty()){
             TreeMap<String,String> key = copy.poll();
             int frequency = sketch.get(key, dayResidual);
-            System.out.println("ESTIMATING KEY: " + key);
             entries.add(new CacheEntry(key, frequency));
         }
         return entries;
-    }
-
-    public void print(){
-        System.out.println("Toplist for days: " + dayResidual);
-        for (TreeMap<String, String> key : heap) {
-            int frequency = sketch.get(key, dayResidual);
-            System.out.printf("KEY: %s \t FREQ: %d\n", key, frequency);
-        }
-        System.out.println("-----------------");
     }
 }

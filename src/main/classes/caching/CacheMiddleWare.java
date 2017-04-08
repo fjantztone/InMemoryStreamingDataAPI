@@ -1,7 +1,7 @@
+package caching;
+
 import exceptions.*;
-import caching.Cache;
-import caching.CacheConfig;
-import caching.InputField;
+import response.ResponseText;
 import spark.Request;
 import spark.Response;
 import utils.ParseUtil;

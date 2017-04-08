@@ -1,4 +1,4 @@
-package caching;
+package sketches;
 
 import hashing.FNV;
 

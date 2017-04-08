@@ -1,3 +1,5 @@
+package caching;
+
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.mongodb.MongoClient;
@@ -7,9 +9,7 @@ import exceptions.CacheAlreadyExistsException;
 import exceptions.CacheNotFoundException;
 import exceptions.RequiresValidDateException;
 import org.bson.Document;
-import caching.Cache;
-import caching.CacheConfig;
-import caching.NamedCache;
+
 import static utils.JsonUtil.*;
 
 import java.util.ArrayList;
