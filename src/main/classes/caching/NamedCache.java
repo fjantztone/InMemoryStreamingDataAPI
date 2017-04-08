@@ -35,8 +35,7 @@ public class NamedCache implements Cache<CacheEntry>{
             case "range":
                 return rangeGet(key);
             case "top":
-                swt.printKey();
-                return null; //unsupported
+                return topGet(key); //topGet
             default:
                 return null;
         }
@@ -75,6 +74,11 @@ public class NamedCache implements Cache<CacheEntry>{
 
         return Arrays.asList(new CacheEntry(key, rangeFrequency));
 
+    }
+    public List<CacheEntry> topGet(TreeMap<String,String> key){
+        System.out.println(key);
+        int days = Integer.parseInt(key.get("DAYS"));
+        return swt.toCacheEntries(days);
     }
     @Override
     public CacheEntry put(TreeMap<String,String> key, int amount) {

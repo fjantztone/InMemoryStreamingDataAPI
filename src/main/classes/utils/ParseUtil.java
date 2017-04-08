@@ -120,6 +120,7 @@ public class ParseUtil {
                     throw new RequiresDateException(String.format("A %s query requires the STARTDATE & ENDDATE query parameters.", filter));
             }
             case "top":
+                //TODO: Check days
                 break;
                 //throw new UnsupportedOperationException("Top is not implemneted");
             default:

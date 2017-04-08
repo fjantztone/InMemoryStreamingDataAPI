@@ -1,9 +1,7 @@
 package caching;
 
-import hashing.FNV;
 import org.apache.commons.collections4.queue.CircularFifoQueue;
 
-import java.util.Iterator;
 import java.util.List;
 import java.util.TreeMap;
 
@@ -11,69 +9,56 @@ import java.util.TreeMap;
  * Created by heka1203 on 2017-04-08.
  */
 /*
-* TODO: Split into two classes
+* TODO: EXAMINE ERROR ESTIMATE
 */
 public class SlidingWindowTopList {
     private final int window;
     private int prevDayResidual = 0;
     private final int numberOfItems;
-    //private CircularFifoQueue<FixedSizeNoDuplicatesPriorityQueue<> heaps; //HEAPS
-    private FixedSizeFifoList<TopList> queue;
+    private CircularFifoQueue<TopList> queue; //HEAPS
 
     public SlidingWindowTopList(int window, int numberOfItems){
         this.window = window;
         this.numberOfItems = numberOfItems;
-        //this.heaps = new CircularFifoQueue(window);
-        this.queue = new FixedSizeFifoList<TopList>(window);
+        this.queue = new CircularFifoQueue(window);
         queue.add(new TopList(numberOfItems, prevDayResidual));
     }
     public void put(TreeMap<String,String> key, int day){
 
         int dayResidual = day % window;
 
-        /*if(window > day){
-            for(int i = 0; i < dayResidual; i++){
-                cms.remove(key, i);
-            }
-
-        }*/
-
-
-        if(dayResidual == 0 && prevDayResidual > 0 || dayResidual > prevDayResidual){
-            System.out.println("Resetting");
+        if(hasWindowPassed(dayResidual) || hasOneTimeUnitPassed(dayResidual)){
             queue.add(new TopList(numberOfItems, dayResidual));
             prevDayResidual = dayResidual;
-            printTopList();
         }
         queue.forEach(topList -> {
             topList.put(key, 1);
         });
 
     }
-    public void printKey(){
-        TreeMap<String,String> key = new TreeMap<>();
-        key.put("ITEM", "2998_GPRS298");
-        key.put("KOMMANDO", "GSM_REG_TJANST");
-        key.put("RETAILER", "288561");
-        System.out.println(cms.get(key, 9));
+    public List<CacheEntry> toCacheEntries(int days){
+        TopList topList = get(days);
+        return topList.toCacheEntries();
     }
-    public void printTopList(){
+    protected TopList get(int days){
+        dayRangeCheck(days);
+        CircularFifoQueue<TopList> copy = new CircularFifoQueue(queue);
 
-        for(int i = 0; i < heaps.size(); i++){
-            FixedSizeNoDuplicatesPriorityQueue<TreeMap<String,String>> q = heaps.get(i);
-
-            final int day = i;
-            System.out.println("TOP LIST AT DAY: " + 9);
-            q.forEach(key -> {
-                int frequency = cms.get(key, day);
-
-                System.out.printf("KEY: %s \t FREQUENCY: %d\n", key, frequency);
-            });
-
-        }
-
-
+        TopList topList = null;
+        for(int day = 0; day < window - (days - 1) && !copy.isEmpty(); topList = copy.poll(), days++){}
+        return  topList;
     }
+    protected void dayRangeCheck(int days){
+        if (days > window || days <= 0)
+            throw new IndexOutOfBoundsException("Number of days must be between 1 and "+window+".");
+    }
+    protected boolean hasWindowPassed(int dayResidual){
+        return dayResidual == 0 && prevDayResidual > 0;
+    }
+    protected boolean hasOneTimeUnitPassed(int dayResidual){
+        return dayResidual > prevDayResidual;
+    }
+
 
 
 
