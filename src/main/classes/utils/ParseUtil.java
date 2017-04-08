@@ -120,8 +120,8 @@ public class ParseUtil {
                     throw new RequiresDateException(String.format("A %s query requires the STARTDATE & ENDDATE query parameters.", filter));
             }
             case "top":
-                //Not implemented yet
-                throw new UnsupportedOperationException("Top is not implemneted");
+                break;
+                //throw new UnsupportedOperationException("Top is not implemneted");
             default:
                 throw new FilterNotFoundException(String.format("Query filter: %s does not exist. The availabe are: point, points, range & top.", filter));
 
@@ -148,7 +148,7 @@ public class ParseUtil {
             LocalDate.parse(date);
             return true;
         }
-        catch(DateTimeParseException e){
+        catch(NullPointerException | DateTimeParseException e){
             return false;
         }
     }

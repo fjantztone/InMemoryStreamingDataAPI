@@ -94,7 +94,7 @@ public class CacheRepository {
             String cacheConfig = cc.toJson();
             Cache cache = createCache(cacheConfig);
             System.out.println("Loaded new cache: " + cache.getCacheConfig());
-            FindIterable<Document> keys = database.getCollection("cacheKeys").find(Document.parse("{'cacheName' : '"+cache.getName()+"'}")).projection(Document.parse("{'_id' : 0, 'cacheName' : 0}"));
+            FindIterable<Document> keys = database.getCollection("cacheKeys").find(Document.parse("{'cacheName' : '"+cache.getName()+"'}")).projection(Document.parse("{'_id' : 0, 'cacheName' : 0}")).sort(Document.parse("{'DATE' : 1}"));
             for(Document key : keys){
                 //Do not add to db
                 cache.put(toSortedMap(key), 1);

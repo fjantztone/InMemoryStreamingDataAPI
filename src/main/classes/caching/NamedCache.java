@@ -15,6 +15,7 @@ import java.util.logging.Logger;
 public class NamedCache implements Cache<CacheEntry>{
     private CountMinSketch cms;
     private CountMinRange cmr;
+    private SlidingWindowTopList swt;
     private CacheConfig cacheConfig;
     private static Logger logger = Logger.getLogger(NamedCache.class.getName());
 
@@ -34,6 +35,7 @@ public class NamedCache implements Cache<CacheEntry>{
             case "range":
                 return rangeGet(key);
             case "top":
+                swt.printKey();
                 return null; //unsupported
             default:
                 return null;
@@ -78,20 +80,32 @@ public class NamedCache implements Cache<CacheEntry>{
     public CacheEntry put(TreeMap<String,String> key, int amount) {
         LocalDate localDate = LocalDate.parse(key.remove("DATE"));
         LocalDate createdDate = cacheConfig.getCreatedDate();
-
         int daysBetween = (int) ChronoUnit.DAYS.between(createdDate, localDate);
-        //TODO: SPLIT FIELDS EQUAL TO LEVELS??
 
-        if(hasKeysExpired(localDate)){ //TODO: Run in separate thread?
+        /*
+        * TODO: Maybe force non-negative, since date is pre creation date?
+        * This makes the assumption that we are using the cache for exploring olden data, thus changing the create date of the cache.
+        * */
+        if(daysBetween < 0){
+            cacheConfig.setCreatedDate(localDate);
+            daysBetween = 0;
+        }
+
+        //TODO: SPLIT FIELDS EQUAL TO LEVELS
+
+        if(hasKeysExpired(localDate) && amount != 0){ //TODO: Only if put. Run in separate thread?
             int numberOfExpiredKeys = (int) ChronoUnit.DAYS.between(cacheConfig.getExpireDate(), localDate);
             adjust(key, numberOfExpiredKeys);
         }
 
 
-        int pointFrequency = cms.put(key, daysBetween, amount);
-        cmr.put(key, daysBetween, amount); //bottleneck?
+        int pointFrequency = cms.put(key, daysBetween, amount); //cmr put
+        cmr.put(key, daysBetween, amount); //cms put
 
-        key.put("DATE", localDate.toString()); //putting the ISO-date back for nicer client response
+        swt.put(key, daysBetween);
+
+
+        //key.put("DATE", localDate.toString()); //putting the ISO-date back for nicer client response
         return new CacheEntry(key, pointFrequency);
 
 
@@ -107,7 +121,7 @@ public class NamedCache implements Cache<CacheEntry>{
     }
     protected void adjust(Object key, int numberOfExpiredKeys){
 
-        if(hasExpireTimeWrappedAround(numberOfExpiredKeys)){ //it is safe to reinitialize whole structure
+        if(hasExpireTimeWrappedAround(numberOfExpiredKeys)){ //it is safe to reinitialize the whole structure
             logger.log(Level.INFO, String.format("Cache: %s has wrapped around its expire time. Safely re-initializing it.", getName()));
             initializeSketches();
             cacheConfig.setCreatedDate(LocalDate.now()); //Update expire date
@@ -125,7 +139,9 @@ public class NamedCache implements Cache<CacheEntry>{
         final int numberOfSketches = (int)Math.ceil(cacheConfig.getExpireDays() / Math.log(2));
         this.cms = new CountMinSketch(width, depth, new FNV());
         this.cmr = new CountMinRange(width, depth, numberOfSketches);
+        this.swt = new SlidingWindowTopList(10, 5);
     }
+
     @Override
     public String getName() {
         return cacheConfig.getCacheName();

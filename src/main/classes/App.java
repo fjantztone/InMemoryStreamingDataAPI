@@ -28,7 +28,8 @@ public class App {
         before((req, res) -> {
 
             /**
-             *      CORS for testing
+             *
+             * CORS for testing
              **/
 
             res.header("Access-Control-Allow-Origin", "*");
