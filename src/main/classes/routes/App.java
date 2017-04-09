@@ -20,6 +20,7 @@ public class App {
             path(Paths.CACHE, () -> {
                 post("/", "application/json", (req, res) -> cacheMiddleWare.create(req, res), json());
                 put("/", "application/json", (req, res) -> cacheMiddleWare.edit(req, res), json());
+                delete("/:name", (req, res) -> cacheMiddleWare.delete(req, res), json());
                 post("/:name", "application/json", (req, res) -> cacheMiddleWare.putKey(req, res), json());
                 post("/:name/upload", "multipart/form-data", (req, res) -> cacheMiddleWare.putFile(req, res), json());
                 get("/:name/:filter", (req, res) -> cacheMiddleWare.getEntry(req, res), json());

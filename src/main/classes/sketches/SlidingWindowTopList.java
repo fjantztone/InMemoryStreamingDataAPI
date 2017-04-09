@@ -44,14 +44,13 @@ public class SlidingWindowTopList {
     protected TopList get(int days){
         dayRangeCheck(days);
         CircularFifoQueue<TopList> copy = new CircularFifoQueue(queue);
-
         TopList topList = null;
         for(int day = 0; day < window - (days - 1) && !copy.isEmpty(); topList = copy.poll(), days++){}
         return  topList;
     }
     protected void dayRangeCheck(int days){
         if (days > window || days <= 0)
-            throw new IndexOutOfBoundsException("Number of days must be between 1 and "+window+".");
+            throw new IllegalArgumentException("Number of days must be between 1 and "+window+".");
     }
     protected boolean hasWindowPassed(int dayResidual){
         return dayResidual == 0 && prevDayResidual > 0;

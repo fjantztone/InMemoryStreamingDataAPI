@@ -38,6 +38,10 @@ public class CacheMiddleWare {
     public Object edit(Request req, Response res) throws CacheNotFoundException {
         return cacheRepository.editCache(req.body());
     }
+    public Object delete(Request req, Response res) throws CacheNotFoundException {
+        String cacheName = req.params(":name");
+        return cacheRepository.deleteCache(cacheName);
+    }
 
     public Object putFile(Request req, Response res) throws IOException, CacheNotFoundException, ServletException, RequiresValidDateException {
         req.attribute("org.eclipse.jetty.multipartConfig", new MultipartConfigElement("/temp")); //For test

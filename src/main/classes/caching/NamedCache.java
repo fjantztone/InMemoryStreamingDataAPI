@@ -91,7 +91,7 @@ public class NamedCache implements Cache<CacheEntry>{
 
         /*
         * TODO: Maybe force non-negative, since date is pre creation date?
-        * This makes the assumption that we are using the cache for exploring olden data, thus changing the create date of the cache.
+        * This makes the assumption that we are using the cache for exploring olden data, thus changing the creation date of the cache.
         * */
         if(daysBetween < 0){
             cacheConfig.setCreatedDate(localDate);
@@ -100,25 +100,24 @@ public class NamedCache implements Cache<CacheEntry>{
 
         //TODO: SPLIT FIELDS EQUAL TO LEVELS
 
-        if(hasKeysExpired(localDate) && amount != 0){ //TODO: Only if put. Run in separate thread?
-            int numberOfExpiredKeys = (int) ChronoUnit.DAYS.between(cacheConfig.getExpireDate(), localDate);
-            adjust(key, numberOfExpiredKeys);
+        if(amount > 0){
+            cmr.put(key, daysBetween, amount); //cms put
+            swt.put(key, daysBetween);
+            if(hasKeysExpired(localDate)){
+                int numberOfExpiredKeys = (int) ChronoUnit.DAYS.between(cacheConfig.getExpireDate(), localDate);
+                adjust(key, numberOfExpiredKeys);
+            }
         }
 
-
         int pointFrequency = cms.put(key, daysBetween, amount); //cmr put
-        cmr.put(key, daysBetween, amount); //cms put
-
-        swt.put(key, daysBetween);
-
-
-        //key.put("DATE", localDate.toString()); //putting the ISO-date back for nicer client response
+        key.put("DATE", localDate.toString()); //putting the ISO-date back for nicer client response
         return new CacheEntry(key, pointFrequency);
 
 
     }
     /*
     * Time stuff
+    * Should probably be move to seaprate class
     * */
     protected boolean hasKeysExpired(LocalDate localDate){
         return localDate.isEqual(cacheConfig.getExpireDate()) || localDate.isAfter(cacheConfig.getExpireDate());

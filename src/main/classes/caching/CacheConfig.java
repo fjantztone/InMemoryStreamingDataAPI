@@ -11,6 +11,8 @@ import java.util.List;
 public class CacheConfig implements Validatable {
     private String cacheName;
     private int expireDays; // days
+    private static int MAX_EXPIRE_DAYS = 365;
+    private static int MIN_EXPIRE_DAYS = 1;
 
     private List<InputField> fileFields;
     private List<InputField> jsonFields;
@@ -19,10 +21,13 @@ public class CacheConfig implements Validatable {
 
     private LocalDate createdDate = LocalDate.now();
 
-
-    @Override
-    public boolean isValid(){
-        return  getCacheName() != null && getFileFields() != null && getJsonFields() != null && getTopLevels() != null && getFrequencyLevels() != null; //TODO: fix validation and error handling
+    public void validate(){
+        if(getCacheName() == null) throw new IllegalStateException("Cache name is required.");
+        if(getFileFields() == null) throw new IllegalStateException("File fields are required.");
+        if(getTopLevels() == null) throw new IllegalStateException("Top levels are required.");
+        if(getJsonFields() == null) throw new IllegalStateException("Json fields are required.");
+        if(getFrequencyLevels() == null) throw  new IllegalStateException("Frequency levels are required");
+        if(expireDays > MAX_EXPIRE_DAYS || expireDays < MIN_EXPIRE_DAYS) throw new IllegalStateException(String.format("Expire days field must exist and be between %d and %d", MIN_EXPIRE_DAYS, MAX_EXPIRE_DAYS));
     }
 
     public String getCacheName() {

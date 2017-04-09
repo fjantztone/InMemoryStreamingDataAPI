@@ -10,6 +10,8 @@ import exceptions.CacheNotFoundException;
 import exceptions.RequiresValidDateException;
 import org.bson.Document;
 
+import javax.print.Doc;
+
 import static utils.JsonUtil.*;
 
 import java.util.ArrayList;
@@ -20,6 +22,8 @@ import java.util.logging.Logger;
 /**
  * Created by heka1203 on 2017-04-05.
  */
+
+//TODO: Very confusing return types, error handling etc
 public class CacheRepository {
     //TODO: Move to constructor?
     MongoClient mongoClient = new MongoClient("localhost", 27017);
@@ -34,7 +38,6 @@ public class CacheRepository {
 
     public Cache createCache(String cacheConfig){
         CacheConfig _cacheConfig = createCacheConfig(cacheConfig);
-        //^ handle parse exception
         return createCache(_cacheConfig);
     }
     public Cache createCache(CacheConfig cacheConfig){
@@ -50,17 +53,29 @@ public class CacheRepository {
     public synchronized CacheConfig editCache(String cacheConfig) throws CacheNotFoundException {
         CacheConfig _cacheConfig = createCacheConfig(cacheConfig);
         Cache cache = getCache(_cacheConfig.getCacheName());
-        //TODO: write update to DB
-        cache.setCacheConfig(_cacheConfig);
+
+        Document old = Document.parse("{'cacheName' : '"+cache.getName()+"'}");
+        Document update = Document.parse("{'$set' : "+toJson(_cacheConfig)+"}");
+        database.getCollection("cacheConfigs").updateOne(old, update);
+
         return _cacheConfig;
 
     }
+    //TODO: confusing return type
     public synchronized CacheConfig addCache(Cache cache) throws CacheAlreadyExistsException {
         String cacheName = cache.getName();
         if(contains(cacheName)) throw new CacheAlreadyExistsException(String.format("A cache with name: %s already exists. Try another cache name.", cacheName));
         Document document = Document.parse(toJson(cache.getCacheConfig()));
         database.getCollection("cacheConfigs").insertOne(document);
         caches.add(cache);
+        return cache.getCacheConfig();
+    }
+    public synchronized CacheConfig deleteCache(String cacheName) throws CacheNotFoundException {
+        Cache cache = getCache(cacheName);
+        Document remove = Document.parse("{'cacheName' : '"+cacheName+"'}");
+        database.getCollection("cacheConfigs").deleteOne(remove);
+        database.getCollection("cacheKeys").deleteMany(remove);
+        caches.remove(cache);
         return cache.getCacheConfig();
     }
     protected boolean contains(String cacheName){

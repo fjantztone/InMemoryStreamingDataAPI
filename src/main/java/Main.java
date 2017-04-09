@@ -12,7 +12,6 @@ import java.util.logging.Logger;
 public class Main {
     public static Logger logger = Logger.getLogger(Main.class.getName());
     public static void main(String[] args) {
-
         try {
             App app = new App(new CacheMiddleWare());
             logger.log(Level.INFO, "Application is running!");
