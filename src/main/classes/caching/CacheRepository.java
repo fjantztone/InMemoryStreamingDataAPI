@@ -78,6 +78,10 @@ public class CacheRepository {
         caches.remove(cache);
         return cache.getCacheConfig();
     }
+    public synchronized CacheConfig getCacheConfig(String cacheName) throws CacheNotFoundException {
+        Cache cache = getCache(cacheName);
+        return cache.getCacheConfig();
+    }
     protected boolean contains(String cacheName){
         try{
             getCache(cacheName);

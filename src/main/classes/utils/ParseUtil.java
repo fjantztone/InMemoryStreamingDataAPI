@@ -1,5 +1,6 @@
 package utils;
 
+import caching.CacheConfig;
 import com.google.gson.JsonParser;
 import exceptions.FilterNotFoundException;
 import exceptions.RequiresDateException;
@@ -121,7 +122,8 @@ public class ParseUtil {
             }
             case "top":
                 //TODO: Check days
-                break;
+                if(json.containsKey("DAYS") && json.containsKey("NAME"))
+                    break;
                 //throw new UnsupportedOperationException("Top is not implemneted");
             default:
                 throw new FilterNotFoundException(String.format("Query filter: %s does not exist. The availabe are: point, points, range & top.", filter));
@@ -152,6 +154,9 @@ public class ParseUtil {
         catch(NullPointerException | DateTimeParseException e){
             return false;
         }
+    }
+    private static boolean isValidDay(int day){
+        return day > 0 && day <= CacheConfig.TOP_WINDOW;
     }
 
 

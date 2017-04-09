@@ -42,6 +42,10 @@ public class CacheMiddleWare {
         String cacheName = req.params(":name");
         return cacheRepository.deleteCache(cacheName);
     }
+    public Object get(Request req, Response res) throws CacheNotFoundException {
+        String cacheName = req.params(":name");
+        return cacheRepository.getCacheConfig(cacheName);
+    }
 
     public Object putFile(Request req, Response res) throws IOException, CacheNotFoundException, ServletException, RequiresValidDateException {
         req.attribute("org.eclipse.jetty.multipartConfig", new MultipartConfigElement("/temp")); //For test
@@ -76,7 +80,7 @@ public class CacheMiddleWare {
         return cacheRepository.addCacheKey(parsedKey, cache);
 
     }
-    public Object getEntry(Request req, Response res) throws CacheNotFoundException, FilterNotFoundException, RequiresDateException, RequiresValidDateException {
+    public Object getEntry(Request req, Response res) throws CacheNotFoundException, FilterNotFoundException, RequiresDateException, RequiresValidDateException, TopListNotFoundException {
         Cache cache = cacheRepository.getCache(req.params(":name"));
         TreeMap<String,String> parsedKey = ParseUtil.parseQueryParams(req.queryMap(), req.params(":filter"));
         //^nullcheck

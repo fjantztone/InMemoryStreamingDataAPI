@@ -13,11 +13,13 @@ public class CacheConfig implements Validatable {
     private int expireDays; // days
     private static int MAX_EXPIRE_DAYS = 365;
     private static int MIN_EXPIRE_DAYS = 1;
+    public static int TOP_WINDOW = 7; //Non static for client side?
+    public static int TOP_ITEMS = 5;
 
     private List<InputField> fileFields;
     private List<InputField> jsonFields;
-    private List<String> topLevels;
-    private List<String> frequencyLevels;
+    private List<List<String>> topLevels;
+    private List<List<String>> frequencyLevels;
 
     private LocalDate createdDate = LocalDate.now();
 
@@ -40,10 +42,10 @@ public class CacheConfig implements Validatable {
     public List<InputField> getJsonFields() {
         return jsonFields;
     }
-    public List<String> getTopLevels() {
+    public List<List<String>> getTopLevels() {
         return topLevels;
     }
-    public List<String> getFrequencyLevels() {
+    public List<List<String>> getFrequencyLevels() {
         return frequencyLevels;
     }
 

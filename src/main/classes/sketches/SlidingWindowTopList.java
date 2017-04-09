@@ -28,6 +28,7 @@ public class SlidingWindowTopList {
 
         int dayResidual = day % window;
 
+        //TODO: Calculate the number of time units passed, and remove them if time unit > 1
         if(hasWindowPassed(dayResidual) || hasOneTimeUnitPassed(dayResidual)){
             queue.add(new TopList(numberOfItems, dayResidual));
             prevDayResidual = dayResidual;

@@ -1,5 +1,6 @@
 package caching;
 
+import exceptions.TopListNotFoundException;
 import hashing.FNV;
 import sketches.CountMinRange;
 import sketches.CountMinSketch;
@@ -15,10 +16,12 @@ import java.util.logging.Logger;
  * Created by heka1203 on 2017-04-01.
  */
 
+//TODO: FIX NAMED TOPLIST IN CACHE CONFIG AND SEPARATE
+
 public class NamedCache implements Cache<CacheEntry>{
     private CountMinSketch cms;
     private CountMinRange cmr;
-    private SlidingWindowTopList swt;
+    private HashMap<String,SlidingWindowTopList> swts;
     private CacheConfig cacheConfig;
     private static Logger logger = Logger.getLogger(NamedCache.class.getName());
 
@@ -28,7 +31,7 @@ public class NamedCache implements Cache<CacheEntry>{
     }
 
     @Override
-    public List<CacheEntry> get(TreeMap<String,String> key, String filter)  {
+    public List<CacheEntry> get(TreeMap<String,String> key, String filter) throws TopListNotFoundException {
 
         switch(filter){
             case "point":
@@ -45,7 +48,7 @@ public class NamedCache implements Cache<CacheEntry>{
 
     }
     public List<CacheEntry> pointGet(TreeMap<String,String> key) {
-        return Arrays.asList(put(key, 0));
+        return Arrays.asList(get(key));
     }
     public List<CacheEntry> pointsGet(TreeMap<String,String> key) {
 
@@ -56,7 +59,7 @@ public class NamedCache implements Cache<CacheEntry>{
         for(int plusDays = 0; plusDays <= daysBetween; plusDays++){
             LocalDate current = startDate.plusDays(plusDays);
             key.put("DATE", current.toString());
-            cacheEntries.add(put(key, 0));
+            cacheEntries.add(get(key));
         }
         return cacheEntries;
 
@@ -78,13 +81,17 @@ public class NamedCache implements Cache<CacheEntry>{
         return Arrays.asList(new CacheEntry(key, rangeFrequency));
 
     }
-    public List<CacheEntry> topGet(TreeMap<String,String> key){
-        System.out.println(key);
+    public List<CacheEntry> topGet(TreeMap<String,String> key) throws TopListNotFoundException {
+
         int days = Integer.parseInt(key.get("DAYS"));
+        String name = key.get("NAME");
+        SlidingWindowTopList swt = swts.get(key.get("NAME"));
+        if(swt == null) throw new TopListNotFoundException(String.format("There exists no toplist with name: %s.", name));
         return swt.toCacheEntries(days);
+
     }
     @Override
-    public CacheEntry put(TreeMap<String,String> key, int amount) {
+    public List<CacheEntry> put(TreeMap<String,String> key, int amount) {
         LocalDate localDate = LocalDate.parse(key.remove("DATE"));
         LocalDate createdDate = cacheConfig.getCreatedDate();
         int daysBetween = (int) ChronoUnit.DAYS.between(createdDate, localDate);
@@ -100,20 +107,40 @@ public class NamedCache implements Cache<CacheEntry>{
 
         //TODO: SPLIT FIELDS EQUAL TO LEVELS
 
-        if(amount > 0){
-            cmr.put(key, daysBetween, amount); //cms put
-            swt.put(key, daysBetween);
-            if(hasKeysExpired(localDate)){
-                int numberOfExpiredKeys = (int) ChronoUnit.DAYS.between(cacheConfig.getExpireDate(), localDate);
-                adjust(key, numberOfExpiredKeys);
-            }
+        if(hasKeysExpired(localDate)){
+            int numberOfExpiredKeys = (int) ChronoUnit.DAYS.between(cacheConfig.getExpireDate(), localDate);
+            adjust(key, numberOfExpiredKeys);
         }
 
-        int pointFrequency = cms.put(key, daysBetween, amount); //cmr put
-        key.put("DATE", localDate.toString()); //putting the ISO-date back for nicer client response
-        return new CacheEntry(key, pointFrequency);
+        List<List<String>> frequencyLevels = cacheConfig.getFrequencyLevels();
+        List<List<String>> topLevels = cacheConfig.getTopLevels();
+        List<CacheEntry> cacheEntries = new ArrayList<>(frequencyLevels.size());
 
+        for(final List level : frequencyLevels){
+            TreeMap<String,String> k = (TreeMap<String, String>) key.clone();
+            k.keySet().retainAll(level);
+            int pointFrequency = cms.put(k, daysBetween, amount); //cmr put
+            cmr.put(k, daysBetween, amount); //cms put
+            k.put("DATE", localDate.toString());
+            cacheEntries.add(new CacheEntry(k, pointFrequency));
+        }
+        for(final List level : topLevels){
+            TreeMap<String,String> k = (TreeMap<String, String>) key.clone();
+            k.keySet().retainAll(level);
+            String name = String.join("&", level);
+            SlidingWindowTopList swt = swts.get(name);
+            swt.put(k, daysBetween);
+        }
 
+        return cacheEntries;
+
+    }
+    public CacheEntry get(TreeMap<String,String> key){
+        LocalDate localDate = LocalDate.parse(key.remove("DATE"));
+        LocalDate createdDate = cacheConfig.getCreatedDate();
+        int daysBetween = (int) ChronoUnit.DAYS.between(createdDate, localDate);
+
+        return new CacheEntry(key, cms.get(key, daysBetween));
     }
     /*
     * Time stuff
@@ -139,13 +166,20 @@ public class NamedCache implements Cache<CacheEntry>{
             }
         }
     }
-    protected void initializeSketches(){
+    protected void initializeSketches() {
         final int width = 1 << 14;
         final int depth = 4;
         final int numberOfSketches = (int)Math.ceil(cacheConfig.getExpireDays() / Math.log(2));
         this.cms = new CountMinSketch(width, depth, new FNV());
         this.cmr = new CountMinRange(width, depth, numberOfSketches);
-        this.swt = new SlidingWindowTopList(10, 5);
+
+        List<List<String>> topLevels = cacheConfig.getTopLevels();
+        this.swts = new HashMap<>(topLevels.size()); //seems to be very costly.
+        for(List level : topLevels){
+            String name = String.join("-", level);
+            swts.put(name, new SlidingWindowTopList(CacheConfig.TOP_WINDOW, CacheConfig.TOP_ITEMS));
+            swts.put(name, new SlidingWindowTopList(CacheConfig.TOP_WINDOW, CacheConfig.TOP_ITEMS));
+        }
     }
 
     @Override
