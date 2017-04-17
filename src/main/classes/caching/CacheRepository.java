@@ -10,13 +10,8 @@ import exceptions.CacheNotFoundException;
 import exceptions.RequiresValidDateException;
 import org.bson.Document;
 
-import javax.print.Doc;
-
-import static utils.JsonUtil.*;
-
-import java.util.ArrayList;
-import java.util.List;
-import java.util.TreeMap;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.logging.Logger;
 
 /**
@@ -25,101 +20,73 @@ import java.util.logging.Logger;
 
 //TODO: Very confusing return types, error handling etc
 public class CacheRepository {
-    //TODO: Move to constructor?
-    MongoClient mongoClient = new MongoClient("localhost", 27017);
-    MongoDatabase database = mongoClient.getDatabase("streamingdata");
-    Logger logger = Logger.getLogger(CacheRepository.class.getName());
 
-    public List<Cache> caches = new ArrayList<>();
+    public Map<String, Cache> caches = new ConcurrentHashMap<>();
 
-    public CacheRepository() throws RequiresValidDateException {
+    public CacheRepository() throws CacheAlreadyExistsException, CacheNotFoundException {
         initialize();
     }
-
-    public Cache createCache(String cacheConfig){
-        CacheConfig _cacheConfig = createCacheConfig(cacheConfig);
-        return createCache(_cacheConfig);
-    }
-    public Cache createCache(CacheConfig cacheConfig){
-        return new NamedCache(cacheConfig);
-    }
-    public CacheConfig createCacheConfig(String cacheConfig){
+    protected CacheConfig toCacheConfig(String cacheConfig){
         GsonBuilder gsonBuilder = new GsonBuilder();
         gsonBuilder.registerTypeAdapter(CacheConfig.class, new CacheConfigDeserializer());
         Gson gson = gsonBuilder.create();
         CacheConfig _cacheConfig = gson.fromJson(cacheConfig, CacheConfig.class);
         return _cacheConfig;
     }
-    public synchronized CacheConfig editCache(String cacheConfig) throws CacheNotFoundException {
-        CacheConfig _cacheConfig = createCacheConfig(cacheConfig);
-        Cache cache = getCache(_cacheConfig.getCacheName());
+    public synchronized Cache editCache(String cacheConfig) throws CacheNotFoundException {
+        CacheConfig _cacheConfig = toCacheConfig(cacheConfig);
+        Cache cache = getCache(_cacheConfig.getName());
+        cache.setCacheConfig(_cacheConfig);
+        return cache;
+    }
+    public synchronized Cache createCache(String cacheConfig) throws CacheAlreadyExistsException, CacheNotFoundException {
+        CacheConfig _cacheConfig = toCacheConfig(cacheConfig);
+        String cacheName = _cacheConfig.getName();
+        validateDuplicate(cacheName);
+        Cache cache = new NamedCache(_cacheConfig);
+        caches.put(cacheName, cache);
+        return cache;
+    }
+    public synchronized Cache deleteCache(String cacheName) throws CacheNotFoundException {
+        validatePresence(cacheName);
+        Cache removed = caches.remove(cacheName);
+        return removed;
+    }
 
-        Document old = Document.parse("{'cacheName' : '"+cache.getName()+"'}");
-        Document update = Document.parse("{'$set' : "+toJson(_cacheConfig)+"}");
-        database.getCollection("cacheConfigs").updateOne(old, update);
-
-        return _cacheConfig;
-
-    }
-    //TODO: confusing return type
-    public synchronized CacheConfig addCache(Cache cache) throws CacheAlreadyExistsException {
-        String cacheName = cache.getName();
-        if(contains(cacheName)) throw new CacheAlreadyExistsException(String.format("A cache with name: %s already exists. Try another cache name.", cacheName));
-        Document document = Document.parse(toJson(cache.getCacheConfig()));
-        database.getCollection("cacheConfigs").insertOne(document);
-        caches.add(cache);
-        return cache.getCacheConfig();
-    }
-    public synchronized CacheConfig deleteCache(String cacheName) throws CacheNotFoundException {
-        Cache cache = getCache(cacheName);
-        Document remove = Document.parse("{'cacheName' : '"+cacheName+"'}");
-        database.getCollection("cacheConfigs").deleteOne(remove);
-        database.getCollection("cacheKeys").deleteMany(remove);
-        caches.remove(cache);
-        return cache.getCacheConfig();
-    }
-    public synchronized CacheConfig getCacheConfig(String cacheName) throws CacheNotFoundException {
-        Cache cache = getCache(cacheName);
-        return cache.getCacheConfig();
-    }
-    protected boolean contains(String cacheName){
-        try{
-            getCache(cacheName);
-            return true;
-        } catch (CacheNotFoundException e) {
-            return false;
-        }
-    }
     public synchronized Cache getCache(String cacheName) throws CacheNotFoundException {
-        for (Cache cache : caches) {
-            if (cache.getName().equalsIgnoreCase(cacheName)) {
-                return cache;
-            }
-        }
-        throw new CacheNotFoundException(String.format("Cache with name: %s does not exist. You can create a new cache at route: /api/cache.", cacheName));
+        validatePresence(cacheName);
+        return caches.get(cacheName);
     }
+    public void validatePresence(String cacheName) throws CacheNotFoundException {
+        if(!caches.containsKey(cacheName))
+            throw new CacheNotFoundException(String.format("Cache with name: %s does not exist. You can create a new cache at route: /api/cache.", cacheName));
+    }
+    public void validateDuplicate(String cacheName) throws CacheAlreadyExistsException {
+        if(caches.containsKey(cacheName))
+            throw new CacheAlreadyExistsException(String.format("A cache with name: %s already exists. Try another cache name.", cacheName));
+    }
+    protected void initialize() throws CacheAlreadyExistsException, CacheNotFoundException {
 
-    //TODO: return key
-    public synchronized Object addCacheKey(TreeMap<String,String> key, Cache cache) throws RequiresValidDateException {
-        Document _key = Document.parse(toJson(key));
-        _key.append("cacheName", cache.getName());
-        database.getCollection("cacheKeys").insertOne(_key);
-        return cache.put(key, 1);
-    }
-    protected void initialize() throws RequiresValidDateException {
-        //TODO: Fix smarter storage to avoid projections.
-        FindIterable<Document> cacheConfigs = database.getCollection("cacheConfigs").find().projection(Document.parse("{'_id' : 0}"));
+        MongoClient mongoClient = new MongoClient("localhost", 27017);
+        MongoDatabase database = mongoClient.getDatabase("streamingdata");
+        FindIterable<Document> cacheConfigs = database.getCollection("cacheconfigs").find().projection(Document.parse("{'_id' : 0}"));
+
         for(Document cc : cacheConfigs){
+            //convert and insert keys
             String cacheConfig = cc.toJson();
             Cache cache = createCache(cacheConfig);
             System.out.println("Loaded new cache: " + cache.getCacheConfig());
-            FindIterable<Document> keys = database.getCollection("cacheKeys").find(Document.parse("{'cacheName' : '"+cache.getName()+"'}")).projection(Document.parse("{'_id' : 0, 'cacheName' : 0}")).sort(Document.parse("{'DATE' : 1}"));
+            /*FindIterable<Document> keys = database.getCollection("cacheKeys").find(Document.parse("{'cacheName' : '"+cache.getName()+"'}")).projection(Document.parse("{'_id' : 0, 'cacheName' : 0}")).sort(Document.parse("{'DATE' : 1}"));
+            //keys.map(JsonUtil::toSortedMap).forEach((Block<? super TreeMap>) key -> {cache.put(key, 1);});
+            long start = System.currentTimeMillis();
             for(Document key : keys){
                 //Do not add to db
+
                 cache.put(toSortedMap(key), 1);
             }
+            long end = System.currentTimeMillis();
+            System.out.printf("Time to load cache was: %ds\n", (end - start) / 1000L);*/
             //Do not add to db
-            caches.add(cache);
         }
     }
 }

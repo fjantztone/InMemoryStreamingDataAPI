@@ -10,22 +10,24 @@ import static utils.JsonUtil.*;
 import static spark.Spark.*;
 
 public class App {
-    CacheMiddleWare cacheMiddleWare;
+    public CacheMiddleWare cacheMiddleWare; //public for testing
+
     public App(CacheMiddleWare cacheMiddleWare) throws RequiresValidDateException {
         this.cacheMiddleWare = cacheMiddleWare;
-        port(9090);
+        port(8081);
         path("/api", () -> {
             //TODO: Change name? This is actually the "CacheController"
 
             path(Paths.CACHE, () -> {
-                post("/", "application/json", (req, res) -> cacheMiddleWare.create(req, res), json());
-                put("/", "application/json", (req, res) -> cacheMiddleWare.edit(req, res), json());
-                delete("/:name", (req, res) -> cacheMiddleWare.delete(req, res), json());
-                get("/:name", (req, res) -> cacheMiddleWare.get(req, res), json());
-                post("/:name", "application/json", (req, res) -> cacheMiddleWare.putKey(req, res), json());
-                post("/:name/upload", "multipart/form-data", (req, res) -> cacheMiddleWare.putFile(req, res), json());
-                get("/:name/:filter", (req, res) -> cacheMiddleWare.getEntry(req, res), json());
+                post("/", "application/json", (req, res) -> cacheMiddleWare.create(req.body()), json());
+                put("/", "application/json", (req, res) -> cacheMiddleWare.edit(req.body()));
+                delete("/:name", (req, res) -> cacheMiddleWare.delete(req.params(":name")), json());
+                get("/:name", (req, res) -> cacheMiddleWare.get(req.params(":name")), json());
+                post("/:name", "application/json", (req, res) -> cacheMiddleWare.putKey(req.params(":name"), req.body()), json());
 
+                get("/:name/filter/point/date/:date/key/:key", (req, res) -> cacheMiddleWare.getPointEntry(req.params(":name"), req.params(":key"), req.params(":date")), json());
+                get("/:name/filter/range/startdate/:startdate/enddate/:enddate/key/:key", (req, res) -> cacheMiddleWare.getRangeEntry(req.params(":name"), req.params(":startdate"), req.params(":enddate"), req.params(":key")), json());
+                get("/:name/filter/top/days/:days", (req, res) -> cacheMiddleWare.getTopEntry(req.params(":name"), Integer.valueOf(req.params(":days"))), json());
             });
 
         });
@@ -36,9 +38,9 @@ public class App {
              * CORS for testing
              **/
 
-            res.header("Access-Control-Allow-Origin", "*");
+            /*res.header("Access-Control-Allow-Origin", "*");
             res.header("Access-Control-Allow-Methods", "PUT, GET, POST, DELETE");
-            res.header("Access-Control-Allow-Headers: Origin, X-Requested-With", "Content-Type, Accept");
+            res.header("Access-Control-Allow-Headers: Origin, X-Requested-With", "Content-Type, Accept");*/
             res.type("application/json");
         });
         exception(Exception.class, (e, req, res) -> {

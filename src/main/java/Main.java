@@ -1,4 +1,7 @@
 import caching.CacheMiddleWare;
+import caching.CacheRepository;
+import exceptions.CacheAlreadyExistsException;
+import exceptions.CacheNotFoundException;
 import exceptions.RequiresValidDateException;
 import routes.App;
 
@@ -11,12 +14,14 @@ import java.util.logging.Logger;
 
 public class Main {
     public static Logger logger = Logger.getLogger(Main.class.getName());
+
     public static void main(String[] args) {
         try {
             App app = new App(new CacheMiddleWare());
             logger.log(Level.INFO, "Application is running!");
-        } catch (RequiresValidDateException e) {
+        } catch (RequiresValidDateException | CacheAlreadyExistsException | CacheNotFoundException e) {
             logger.log(Level.SEVERE, e.getMessage(), e);
         }
+
     }
 }

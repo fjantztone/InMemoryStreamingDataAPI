@@ -9,46 +9,39 @@ import java.util.List;
  * Created by heka1203 on 2017-04-03.
  */
 public class CacheConfig implements Validatable {
-    private String cacheName;
+    private String name;
     private int expireDays; // days
-    private static int MAX_EXPIRE_DAYS = 365;
+    private static int MAX_EXPIRE_DAYS = 31;
     private static int MIN_EXPIRE_DAYS = 1;
     public static int TOP_WINDOW = 7; //Non static for client side?
     public static int TOP_ITEMS = 5;
 
-    private List<InputField> fileFields;
-    private List<InputField> jsonFields;
-    private List<List<String>> topLevels;
-    private List<List<String>> frequencyLevels;
+
+
+    private List<String> attributes;
+    private List<List<String>> levels;
 
     private LocalDate createdDate = LocalDate.now();
 
     public void validate(){
-        if(getCacheName() == null) throw new IllegalStateException("Cache name is required.");
-        if(getFileFields() == null) throw new IllegalStateException("File fields are required.");
-        if(getTopLevels() == null) throw new IllegalStateException("Top levels are required.");
-        if(getJsonFields() == null) throw new IllegalStateException("Json fields are required.");
-        if(getFrequencyLevels() == null) throw  new IllegalStateException("Frequency levels are required");
+        if(getName() == null) throw new IllegalStateException("Cache name is required.");
+        if(getAttributes() == null) throw new IllegalStateException("Fields are required.");
+        if(getLevels() == null) throw new IllegalStateException("Levels are required.");
         if(expireDays > MAX_EXPIRE_DAYS || expireDays < MIN_EXPIRE_DAYS) throw new IllegalStateException(String.format("Expire days field must exist and be between %d and %d", MIN_EXPIRE_DAYS, MAX_EXPIRE_DAYS));
     }
 
-    public String getCacheName() {
-        return cacheName;
+    public String getName() {
+        return name;
     }
     public int getExpireDays(){return expireDays;}
-    public List<InputField> getFileFields() {
-        return fileFields;
-    }
-    public List<InputField> getJsonFields() {
-        return jsonFields;
-    }
-    public List<List<String>> getTopLevels() {
-        return topLevels;
-    }
-    public List<List<String>> getFrequencyLevels() {
-        return frequencyLevels;
+
+    public List<String> getAttributes() {
+        return attributes;
     }
 
+    public List<List<String>> getLevels() {
+        return levels;
+    }
     public LocalDate getCreatedDate(){ return createdDate; }
     public LocalDate getExpireDate(){ return createdDate.plusDays(getExpireDays()); }
     public void setCreatedDate(LocalDate createdDate){
