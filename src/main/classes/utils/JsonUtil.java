@@ -10,11 +10,8 @@ import java.util.TreeMap;
  * Created by heka1203 on 2017-04-03.
  */
 public class JsonUtil {
-    public static TreeMap toSortedMap(Object object){
-        Gson gson = new Gson();
-        String json = gson.toJson(object);
-        TreeMap<String, Object> map = gson.fromJson(json, TreeMap.class);
-        return map;
+    public static TreeMap toMap(Object object){
+        return new Gson().fromJson(object.toString(), TreeMap.class);
     }
     public static String toJson(Object object){
         Gson gson = new Gson();

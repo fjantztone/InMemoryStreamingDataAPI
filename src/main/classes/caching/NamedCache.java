@@ -46,7 +46,7 @@ public class NamedCache implements Cache<CacheEntry>{
         return cacheEntries;
 
     }
-    public List<CacheEntry> rangeGet(TreeMap<String,String> key, LocalDate startDate, LocalDate endDate) {
+    public CacheEntry rangeGet(TreeMap<String,String> key, LocalDate startDate, LocalDate endDate) {
 
         List<CacheEntry> cacheEntries = new ArrayList<>();
         LocalDate createdDate = cacheConfig.getCreatedDate(); //cache created date
@@ -55,7 +55,7 @@ public class NamedCache implements Cache<CacheEntry>{
         int end = (int) ChronoUnit.DAYS.between(createdDate, endDate);
         int rangeFrequency = cmr.get(key, start, end);
 
-        return Arrays.asList(new CacheRangeEntry(key, rangeFrequency, startDate, endDate));
+        return new CacheRangeEntry(key, rangeFrequency, startDate, endDate);
 
     }
     public List<CacheEntry> topGet(int days){
@@ -82,7 +82,7 @@ public class NamedCache implements Cache<CacheEntry>{
             keyLevel.keySet().retainAll(level);
 
             int pointFrequency = cms.put(keyLevel, daysBetween, amount); //cmr put
-            cmr.put(key, daysBetween, amount); //cms put
+            cmr.put(keyLevel, daysBetween, amount); //cms put
             cacheEntries.add(new CachePointEntry(keyLevel, pointFrequency, localDate));
         }
 

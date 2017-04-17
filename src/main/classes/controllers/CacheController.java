@@ -1,9 +1,8 @@
-package caching;
+package controllers;
 
-import com.google.gson.Gson;
+import caching.Cache;
+import caching.CacheRepository;
 import exceptions.*;
-import spark.Request;
-import spark.Response;
 
 import java.time.LocalDate;
 import java.time.format.DateTimeParseException;
@@ -16,12 +15,12 @@ import java.util.logging.Logger;
  */
 
 
-public class CacheMiddleWare {
+public class CacheController {
     //Should be read from file later on.
     protected CacheRepository cacheRepository;
-    public static Logger logger = Logger.getLogger(CacheMiddleWare.class.getName());
+    public static Logger logger = Logger.getLogger(CacheController.class.getName());
 
-    public CacheMiddleWare() throws CacheAlreadyExistsException, CacheNotFoundException {
+    public CacheController() throws CacheAlreadyExistsException, CacheNotFoundException {
         cacheRepository = new CacheRepository();
     }
 
@@ -38,30 +37,36 @@ public class CacheMiddleWare {
         return cacheRepository.getCache(cacheName).getCacheConfig();
     }
 
-    public Object putKey(String cacheName, String key) throws CacheNotFoundException, RequiresValidDateException, InvalidKeyException {
-        TreeMap<String,String> _key = new Gson().fromJson(key, TreeMap.class);
+    public Object putKey(String cacheName, TreeMap<String,String> key) throws CacheNotFoundException, RequiresValidDateException, InvalidKeyException {
+
         Cache cache = cacheRepository.getCache(cacheName);
-        validateKey(_key, cache);
-        return cache.put(_key, LocalDate.now(), 1);
+        validateKey(key, cache);
+        return cache.put(key, LocalDate.now(), 1);
     }
-    public Object getPointEntry(String cacheName, String key, String date) throws RequiresValidDateException, CacheNotFoundException {
-        ///cache/:name/filter/point/date/:date/key/:key
+    public Object getPointEntry(String cacheName, String date, TreeMap<String,String> key) throws RequiresValidDateException, CacheNotFoundException {
         validateISODate(date);
-
-        TreeMap<String,String> _key = new Gson().fromJson(key, TreeMap.class); //key is expected to be valid.
         Cache cache = cacheRepository.getCache(cacheName);
 
-        return cache.pointGet(_key, LocalDate.parse(date));
+        return cache.pointGet(key, LocalDate.parse(date));
     }
-    public Object getPointsEntry(Request req, Response res){
-        throw new UnsupportedOperationException();
+    public Object getPointsEntry(String cacheName, String startDate, String endDate, TreeMap<String,String> key) throws RequiresValidDateException, CacheNotFoundException {
+        validateISODate(startDate);
+        validateISODate(endDate);
+        Cache cache = cacheRepository.getCache(cacheName);
+
+        return cache.pointsGet(key, LocalDate.parse(startDate), LocalDate.parse(endDate));
     }
 
-    public Object getRangeEntry(String cacheName, String startDate, String endDate, String key){
-        throw new UnsupportedOperationException();
+    public Object getRangeEntry(String cacheName, String startDate, String endDate, TreeMap<String,String> key) throws RequiresValidDateException, CacheNotFoundException {
+        validateISODate(startDate);
+        validateISODate(endDate);
+        Cache cache = cacheRepository.getCache(cacheName);
+
+        return cache.rangeGet(key, LocalDate.parse(startDate), LocalDate.parse(endDate));
     }
-    public Object getTopEntry(String cacheName, int days){
-        throw new UnsupportedOperationException();
+    public Object getTopEntry(String cacheName, int days) throws CacheNotFoundException {
+        Cache cache = cacheRepository.getCache(cacheName);
+        return cache.topGet(days);
     }
 
     public void validateISODate(String date) throws RequiresValidDateException {
