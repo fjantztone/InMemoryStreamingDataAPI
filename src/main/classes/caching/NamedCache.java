@@ -6,6 +6,7 @@ import hashing.FNV;
 import sketches.CountMinRange;
 import sketches.CountMinSketch;
 import sketches.SlidingWindowTopList;
+import sketches.TopList;
 
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
@@ -54,11 +55,12 @@ public class NamedCache implements Cache<CacheEntry>{
         int end = (int) ChronoUnit.DAYS.between(createdDate, endDate);
         int rangeFrequency = cmr.get(key, start, end);
 
-        return Arrays.asList(new CacheEntry(key, rangeFrequency));
+        return Arrays.asList(new CacheRangeEntry(key, rangeFrequency, startDate, endDate));
 
     }
     public List<CacheEntry> topGet(int days){
-        return swt.toCacheEntries(days);
+        TopList topList = swt.get(days);
+        return topList.toCacheEntries();
     }
     @Override
     public List<CacheEntry> put(TreeMap<String,String> key, LocalDate localDate, int amount) throws InvalidKeyException {

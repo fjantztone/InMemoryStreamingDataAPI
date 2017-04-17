@@ -1,8 +1,10 @@
 package sketches;
 
 import caching.CacheEntry;
+import caching.CachePointEntry;
 import hashing.FNV;
 
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.PriorityQueue;
@@ -28,12 +30,15 @@ public class TopList{
         heap.add(key);
     }
     public List<CacheEntry> toCacheEntries(){
+
         PriorityQueue<TreeMap<String, String>> copy = new PriorityQueue<TreeMap<String, String>>(heap);
         List<CacheEntry> entries = new ArrayList<>(copy.size());
+        LocalDate localDate = LocalDate.now().minusDays(dayResidual);
+
         while(!copy.isEmpty()){
             TreeMap<String,String> key = copy.poll();
             int frequency = sketch.get(key, dayResidual);
-            entries.add(new CacheEntry(key, frequency));
+            entries.add(new CachePointEntry(key, frequency, localDate));
         }
         return entries;
     }

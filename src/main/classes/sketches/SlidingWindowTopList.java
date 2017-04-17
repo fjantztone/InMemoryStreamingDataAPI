@@ -27,9 +27,12 @@ public class SlidingWindowTopList {
     public void put(TreeMap<String,String> key, int day){
 
         int dayResidual = day % window;
+        int diff = dayResidual - prevDayResidual;
 
-        //TODO: Calculate the number of time units passed, and remove them if time unit > 1
-        if(hasWindowPassed(dayResidual) || hasOneTimeUnitPassed(dayResidual)){
+        if(hasTimeUnitPassed(diff)){
+            if(diff > 1){
+                for(int i = 0; i < diff && !queue.isEmpty(); queue.remove()); //remove old
+            }
             queue.add(new TopList(numberOfItems, dayResidual));
             prevDayResidual = dayResidual;
         }
@@ -38,26 +41,19 @@ public class SlidingWindowTopList {
         });
 
     }
-    public List<CacheEntry> toCacheEntries(int days){
-        TopList topList = get(days);
-        return topList.toCacheEntries();
-    }
-    protected TopList get(int days){
-        dayRangeCheck(days);
+    public TopList get(int days){
+        validateDays(days);
         CircularFifoQueue<TopList> copy = new CircularFifoQueue(queue);
         TopList topList = null;
         for(int day = 0; day < window - (days - 1) && !copy.isEmpty(); topList = copy.poll(), days++){}
         return  topList;
     }
-    protected void dayRangeCheck(int days){
+    protected void validateDays(int days){
         if (days > window || days <= 0)
             throw new IllegalArgumentException("Number of days must be between 1 and "+window+".");
     }
-    protected boolean hasWindowPassed(int dayResidual){
-        return dayResidual == 0 && prevDayResidual > 0;
-    }
-    protected boolean hasOneTimeUnitPassed(int dayResidual){
-        return dayResidual > prevDayResidual;
+    protected boolean hasTimeUnitPassed(int diff){
+        return diff > 0 || diff < 0;
     }
 
 

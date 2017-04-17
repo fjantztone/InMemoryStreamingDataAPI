@@ -2,11 +2,14 @@ package sketches;
 
 import hashing.FNV;
 
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicIntegerArray;
+
 /**
  * Created by heka1203 on 2017-04-01.
  */
 public class CountMinSketch {
-    private int register[];
+    private AtomicIntegerArray register;
     private int width;
     private final int depth;
     private final FNV fnv;
@@ -20,7 +23,7 @@ public class CountMinSketch {
     public CountMinSketch(int width, int depth, FNV fnv){
         this.width = width;
         this.depth = depth;
-        this.register = new int[width*depth];
+        this.register = new AtomicIntegerArray(width*depth);
         this.fnv = fnv;
     }
 
@@ -42,10 +45,10 @@ public class CountMinSketch {
 
         for(int i = 0; i != depth; i++){
             int hash = (fnv.next() & 0x7fffffff) % width;
+            register.addAndGet(i*width + hash, amount);
+            if(register.get(i*width + hash) < min)
+                min = register.get(i*width + hash);
 
-            register[i*width + hash] += amount/*Emphasis.pre(dateDiff, amount)*/;
-            if(register[i*width + hash] < min)
-                min = register[i*width + hash];
         }
         return min;
     }
