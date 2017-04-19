@@ -20,7 +20,7 @@ public class CacheController {
     protected CacheRepository cacheRepository;
     public static Logger logger = Logger.getLogger(CacheController.class.getName());
 
-    public CacheController() throws CacheAlreadyExistsException, CacheNotFoundException {
+    public CacheController() throws CacheAlreadyExistsException, CacheNotFoundException, InvalidKeyException {
         cacheRepository = new CacheRepository();
     }
 
@@ -38,9 +38,7 @@ public class CacheController {
     }
 
     public Object putKey(String cacheName, TreeMap<String,String> key) throws CacheNotFoundException, RequiresValidDateException, InvalidKeyException {
-
         Cache cache = cacheRepository.getCache(cacheName);
-        validateKey(key, cache);
         return cache.put(key, LocalDate.now(), 1);
     }
     public Object getPointEntry(String cacheName, String date, TreeMap<String,String> key) throws RequiresValidDateException, CacheNotFoundException {
@@ -77,11 +75,6 @@ public class CacheController {
             throw new RequiresValidDateException("The date must be in ISO-8601 format.");
         }
     }
-    public void validateKey(TreeMap<String,String> key, Cache cache) throws InvalidKeyException { //May be a bad place
-        List<String> attributes = cache.getCacheConfig().getAttributes();
-        key.keySet().retainAll(attributes);
-        if(key.size() != attributes.size())
-            throw new InvalidKeyException(String.format("The provided key does not match the required attributes (%s).", attributes));
-    }
+
 
 }

@@ -7,12 +7,12 @@ import com.mongodb.client.FindIterable;
 import com.mongodb.client.MongoDatabase;
 import exceptions.CacheAlreadyExistsException;
 import exceptions.CacheNotFoundException;
-import exceptions.RequiresValidDateException;
+import exceptions.InvalidKeyException;
 import org.bson.Document;
 
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.logging.Logger;
 
 /**
  * Created by heka1203 on 2017-04-05.
@@ -23,7 +23,7 @@ public class CacheRepository {
 
     public Map<String, Cache> caches = new ConcurrentHashMap<>();
 
-    public CacheRepository() throws CacheAlreadyExistsException, CacheNotFoundException {
+    public CacheRepository() throws CacheAlreadyExistsException, CacheNotFoundException, InvalidKeyException {
         initialize();
     }
     protected CacheConfig toCacheConfig(String cacheConfig){
@@ -32,6 +32,13 @@ public class CacheRepository {
         Gson gson = gsonBuilder.create();
         CacheConfig _cacheConfig = gson.fromJson(cacheConfig, CacheConfig.class);
         return _cacheConfig;
+    }
+    protected Key toKey(String key){
+        GsonBuilder gsonBuilder = new GsonBuilder();
+        gsonBuilder.registerTypeAdapter(Key.class, new KeyDeserializer());
+        Gson gson = gsonBuilder.create();
+        Key _key = gson.fromJson(key, Key.class);
+        return _key;
     }
     public synchronized Cache editCache(String cacheConfig) throws CacheNotFoundException {
         CacheConfig _cacheConfig = toCacheConfig(cacheConfig);
@@ -65,7 +72,7 @@ public class CacheRepository {
         if(caches.containsKey(cacheName))
             throw new CacheAlreadyExistsException(String.format("A cache with name: %s already exists. Try another cache name.", cacheName));
     }
-    protected void initialize() throws CacheAlreadyExistsException, CacheNotFoundException {
+    protected void initialize() throws CacheAlreadyExistsException, CacheNotFoundException, InvalidKeyException {
 
         MongoClient mongoClient = new MongoClient("localhost", 27017);
         MongoDatabase database = mongoClient.getDatabase("streamingdata");
@@ -75,18 +82,13 @@ public class CacheRepository {
             //convert and insert keys
             String cacheConfig = cc.toJson();
             Cache cache = createCache(cacheConfig);
-            System.out.println("Loaded new cache: " + cache.getCacheConfig());
-            /*FindIterable<Document> keys = database.getCollection("cacheKeys").find(Document.parse("{'cacheName' : '"+cache.getName()+"'}")).projection(Document.parse("{'_id' : 0, 'cacheName' : 0}")).sort(Document.parse("{'DATE' : 1}"));
-            //keys.map(JsonUtil::toSortedMap).forEach((Block<? super TreeMap>) key -> {cache.put(key, 1);});
-            long start = System.currentTimeMillis();
-            for(Document key : keys){
-                //Do not add to db
-
-                cache.put(toSortedMap(key), 1);
+            @SuppressWarnings("unchecked")
+            List<Document> docs = (List<Document>)cc.get("data");
+            for(Document doc : docs){
+                Key key = toKey(doc.toJson());
+                cache.put(key.getKey(), key.getCreatedAt(), 1);
             }
-            long end = System.currentTimeMillis();
-            System.out.printf("Time to load cache was: %ds\n", (end - start) / 1000L);*/
-            //Do not add to db
+            System.out.printf("Loaded %d keys into cache.\n", docs.size());
         }
     }
 }

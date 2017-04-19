@@ -15,13 +15,9 @@ public class CacheConfig implements Validatable {
     private static int MIN_EXPIRE_DAYS = 1;
     public static int TOP_WINDOW = 7; //Non static for client side?
     public static int TOP_ITEMS = 5;
-
-
-
     private List<String> attributes;
     private List<List<String>> levels;
-
-    private LocalDate createdDate = LocalDate.now();
+    private LocalDate createdAt;
 
     public void validate(){
         if(getName() == null) throw new IllegalStateException("Cache name is required.");
@@ -42,10 +38,10 @@ public class CacheConfig implements Validatable {
     public List<List<String>> getLevels() {
         return levels;
     }
-    public LocalDate getCreatedDate(){ return createdDate; }
-    public LocalDate getExpireDate(){ return createdDate.plusDays(getExpireDays()); }
-    public void setCreatedDate(LocalDate createdDate){
-        this.createdDate = createdDate;
+    public LocalDate getCreatedAt(){ return createdAt; }
+    public LocalDate getExpireDate(){ return createdAt.plusDays(getExpireDays()); }
+    public void setCreatedAt(LocalDate createdAt){
+        this.createdAt = createdAt;
     }
 
     public String toString(){

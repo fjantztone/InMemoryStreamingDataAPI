@@ -11,7 +11,7 @@ import java.util.TreeMap;
  */
 public class JsonUtil {
     public static TreeMap toMap(Object object){
-        return new Gson().fromJson(object.toString(), TreeMap.class);
+        return new Gson().fromJson((String)object, TreeMap.class);
     }
     public static String toJson(Object object){
         Gson gson = new Gson();

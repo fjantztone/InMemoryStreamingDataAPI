@@ -1,7 +1,6 @@
 package caching;
 
 import exceptions.InvalidKeyException;
-import exceptions.TopListNotFoundException;
 import hashing.FNV;
 import sketches.CountMinRange;
 import sketches.CountMinSketch;
@@ -9,6 +8,7 @@ import sketches.SlidingWindowTopList;
 import sketches.TopList;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.logging.Level;
@@ -49,7 +49,7 @@ public class NamedCache implements Cache<CacheEntry>{
     public CacheEntry rangeGet(TreeMap<String,String> key, LocalDate startDate, LocalDate endDate) {
 
         List<CacheEntry> cacheEntries = new ArrayList<>();
-        LocalDate createdDate = cacheConfig.getCreatedDate(); //cache created date
+        LocalDate createdDate = cacheConfig.getCreatedAt(); //cache created date
 
         int start = (int) ChronoUnit.DAYS.between(createdDate, startDate);
         int end = (int) ChronoUnit.DAYS.between(createdDate, endDate);
@@ -64,13 +64,13 @@ public class NamedCache implements Cache<CacheEntry>{
     }
     @Override
     public List<CacheEntry> put(TreeMap<String,String> key, LocalDate localDate, int amount) throws InvalidKeyException {
-
-        LocalDate createdDate = cacheConfig.getCreatedDate();
+        validateKey(key);
+        LocalDate createdDate = cacheConfig.getCreatedAt();
         int daysBetween = (int) ChronoUnit.DAYS.between(createdDate, localDate);
 
 
         if(hasKeysExpired(localDate)){
-            int numberOfExpiredKeys = (int) ChronoUnit.DAYS.between(cacheConfig.getExpireDate(), localDate);
+            int numberOfExpiredKeys = (int) ChronoUnit.DAYS.between(cacheConfig.getExpireDate(), localDate) % cacheConfig.getExpireDays();
             adjust(key, numberOfExpiredKeys);
         }
 
@@ -86,44 +86,38 @@ public class NamedCache implements Cache<CacheEntry>{
             cacheEntries.add(new CachePointEntry(keyLevel, pointFrequency, localDate));
         }
 
-        //TreeMap<String,String> k = (TreeMap<String, String>) key.clone(); //check if necessary
-
         swt.put(key, daysBetween); //retain all in attributes
 
         return cacheEntries;
 
     }
     protected CacheEntry get(TreeMap<String,String> key, LocalDate localDate){
-        LocalDate createdDate = cacheConfig.getCreatedDate();
+        LocalDate createdDate = cacheConfig.getCreatedAt();
         int daysBetween = (int) ChronoUnit.DAYS.between(createdDate, localDate);
         int pointFrequency = cms.get(key, daysBetween);
-        System.out.println("DAYSBETWEEN: " + daysBetween);
-        System.out.println("GETTING KEY: " + key);
         return new CachePointEntry(key, pointFrequency, localDate);
     }
 
     /*
     * Time stuff
-    * Should probably be move to seaprate class
+    * Should probably be moved to another place
     * */
     protected boolean hasKeysExpired(LocalDate localDate){
         return localDate.isEqual(cacheConfig.getExpireDate()) || localDate.isAfter(cacheConfig.getExpireDate());
     }
-    protected boolean hasExpireTimeWrappedAround(int numberOfExpiredKeys){
-        return numberOfExpiredKeys == cacheConfig.getExpireDays();
-    }
     protected void adjust(Object key, int numberOfExpiredKeys){
 
-        if(hasExpireTimeWrappedAround(numberOfExpiredKeys)){ //it is safe to reinitialize the whole structure
-            logger.log(Level.INFO, String.format("Cache: %s has wrapped around its expire time. Safely re-initializing it.", cacheConfig.getName()));
-            initializeSketches();
-            cacheConfig.setCreatedDate(LocalDate.now()); //Update expire date
-        } else {
-            logger.log(Level.INFO, String.format("Found %d expired key candidates in cache, attempting to remove them.", numberOfExpiredKeys + 1));
-            for(int day = 0; day < numberOfExpiredKeys; day++){
-                cms.remove(key, day); //VERY CHEAP OPERATION SO NP
-            }
+        logger.log(Level.INFO, String.format("Found %d expired key candidates in cache, attempting to remove them.", numberOfExpiredKeys + 1));
+        for(int day = 0; day < numberOfExpiredKeys; day++){
+            cms.remove(key, day); //VERY CHEAP OPERATION SO NP
         }
+
+    }
+    public void validateKey(TreeMap<String,String> key) throws InvalidKeyException { //May be a bad place
+        List<String> attributes = getCacheConfig().getAttributes();
+        key.keySet().retainAll(attributes);
+        if(key.size() != attributes.size())
+            throw new InvalidKeyException(String.format("The provided key does not match the required attributes (%s).", attributes));
     }
     protected void initializeSketches() {
         final int width = 1 << 14;

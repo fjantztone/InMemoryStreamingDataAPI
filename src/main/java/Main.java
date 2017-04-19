@@ -1,8 +1,11 @@
 import exceptions.CacheAlreadyExistsException;
 import exceptions.CacheNotFoundException;
+import exceptions.InvalidKeyException;
 import exceptions.RequiresValidDateException;
 import services.AppService;
 
+import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -17,9 +20,11 @@ public class Main {
         try {
             AppService app = new AppService();
             logger.log(Level.INFO, "Application is running!");
-        } catch (RequiresValidDateException | CacheAlreadyExistsException | CacheNotFoundException e) {
+        } catch (RequiresValidDateException | CacheAlreadyExistsException | CacheNotFoundException | InvalidKeyException e) {
             logger.log(Level.SEVERE, e.getMessage(), e);
         }
+
+
 
     }
 }

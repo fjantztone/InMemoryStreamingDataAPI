@@ -3,12 +3,11 @@ package services; /**
  */
 
 import controllers.CacheController;
-import com.google.gson.Gson;
 import exceptions.CacheAlreadyExistsException;
 import exceptions.CacheNotFoundException;
+import exceptions.InvalidKeyException;
 import exceptions.RequiresValidDateException;
 import response.ResponseError;
-import services.CacheService;
 
 import static utils.JsonUtil.*;
 import static spark.Spark.*;
@@ -16,7 +15,7 @@ import static spark.Spark.*;
 public class AppService {
     public CacheService cacheService; //public for testing
 
-    public AppService() throws RequiresValidDateException, CacheAlreadyExistsException, CacheNotFoundException {
+    public AppService() throws RequiresValidDateException, CacheAlreadyExistsException, CacheNotFoundException, InvalidKeyException {
         port(8081);
         before((req, res) -> {
             //CORS
