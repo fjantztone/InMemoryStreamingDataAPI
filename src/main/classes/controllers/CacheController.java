@@ -5,6 +5,7 @@ import caching.CacheRepository;
 import exceptions.*;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.format.DateTimeParseException;
 import java.util.List;
 import java.util.TreeMap;
@@ -39,20 +40,20 @@ public class CacheController {
 
     public Object putKey(String cacheName, TreeMap<String,String> key) throws CacheNotFoundException, RequiresValidDateException, InvalidKeyException {
         Cache cache = cacheRepository.getCache(cacheName);
-        return cache.put(key, LocalDate.now(), 1);
+        return cache.put(key, LocalDateTime.now(), 1);
     }
     public Object getPointEntry(String cacheName, String date, TreeMap<String,String> key) throws RequiresValidDateException, CacheNotFoundException {
         validateISODate(date);
         Cache cache = cacheRepository.getCache(cacheName);
 
-        return cache.pointGet(key, LocalDate.parse(date));
+        return cache.pointGet(key, LocalDateTime.parse(date));
     }
     public Object getPointsEntry(String cacheName, String startDate, String endDate, TreeMap<String,String> key) throws RequiresValidDateException, CacheNotFoundException {
         validateISODate(startDate);
         validateISODate(endDate);
         Cache cache = cacheRepository.getCache(cacheName);
 
-        return cache.pointsGet(key, LocalDate.parse(startDate), LocalDate.parse(endDate));
+        return cache.pointsGet(key, LocalDateTime.parse(startDate), LocalDateTime.parse(endDate));
     }
 
     public Object getRangeEntry(String cacheName, String startDate, String endDate, TreeMap<String,String> key) throws RequiresValidDateException, CacheNotFoundException {
@@ -60,7 +61,7 @@ public class CacheController {
         validateISODate(endDate);
         Cache cache = cacheRepository.getCache(cacheName);
 
-        return cache.rangeGet(key, LocalDate.parse(startDate), LocalDate.parse(endDate));
+        return cache.rangeGet(key, LocalDateTime.parse(startDate), LocalDateTime.parse(endDate));
     }
     public Object getTopEntry(String cacheName, int days) throws CacheNotFoundException {
         Cache cache = cacheRepository.getCache(cacheName);
@@ -69,10 +70,10 @@ public class CacheController {
 
     public void validateISODate(String date) throws RequiresValidDateException {
         try{
-            LocalDate localDate = LocalDate.parse(date);
+            LocalDateTime localDateTime = LocalDateTime.parse(date);
         }
         catch(DateTimeParseException e){
-            throw new RequiresValidDateException("The date must be in ISO-8601 format.");
+            throw new RequiresValidDateException("The date must be in ISO-8601 format, i.e (YYYY-MM-DDTHH:mm:ss).");
         }
     }
 

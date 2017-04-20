@@ -1,8 +1,9 @@
 package caching;
 
+import common.Validatable;
 import utils.JsonUtil;
 
-import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 
 /**
@@ -17,7 +18,7 @@ public class CacheConfig implements Validatable {
     public static int TOP_ITEMS = 5;
     private List<String> attributes;
     private List<List<String>> levels;
-    private LocalDate createdAt;
+    private LocalDateTime createdAt;
 
     public void validate(){
         if(getName() == null) throw new IllegalStateException("Cache name is required.");
@@ -38,9 +39,9 @@ public class CacheConfig implements Validatable {
     public List<List<String>> getLevels() {
         return levels;
     }
-    public LocalDate getCreatedAt(){ return createdAt; }
-    public LocalDate getExpireDate(){ return createdAt.plusDays(getExpireDays()); }
-    public void setCreatedAt(LocalDate createdAt){
+    public LocalDateTime getCreatedAt(){ return createdAt; }
+    public LocalDateTime getExpireDate(){ return createdAt.plusDays(getExpireDays()); }
+    public void setCreatedAt(LocalDateTime createdAt){
         this.createdAt = createdAt;
     }
 

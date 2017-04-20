@@ -17,6 +17,7 @@ public class AppService {
 
     public AppService() throws RequiresValidDateException, CacheAlreadyExistsException, CacheNotFoundException, InvalidKeyException {
         port(8081);
+        webSocket("/cachestream", CacheWebSocketHandler.class);
         before((req, res) -> {
             //CORS
             /*res.header("Access-Control-Allow-Origin", "*");

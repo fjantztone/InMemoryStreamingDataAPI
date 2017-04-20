@@ -4,6 +4,7 @@ import com.google.gson.*;
 
 import java.lang.reflect.Type;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.ZonedDateTime;
 
 /**
@@ -12,7 +13,7 @@ import java.time.ZonedDateTime;
 public class KeyDeserializer implements JsonDeserializer<Key> {
     @Override
     public Key deserialize(JsonElement json, Type typeOfT, JsonDeserializationContext context) throws JsonParseException {
-        Gson gson = new GsonBuilder().registerTypeAdapter(LocalDate.class, (JsonDeserializer<LocalDate>) (json1, typeOfT1, context1) -> ZonedDateTime.parse(json1.getAsString()).toLocalDate()).create();
+        Gson gson = new GsonBuilder().registerTypeAdapter(LocalDateTime.class, (JsonDeserializer<LocalDateTime>) (json1, typeOfT1, context1) -> ZonedDateTime.parse(json1.getAsString()).toLocalDateTime()).create();
         Key key = gson.fromJson(json, Key.class);
         return key;
     }

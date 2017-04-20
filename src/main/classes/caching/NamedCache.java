@@ -2,12 +2,18 @@ package caching;
 
 import exceptions.InvalidKeyException;
 import hashing.FNV;
+import org.eclipse.jetty.util.ConcurrentHashSet;
+import org.eclipse.jetty.websocket.api.Session;
+import services.CacheWebSocketHandler;
 import sketches.CountMinRange;
 import sketches.CountMinSketch;
 import sketches.SlidingWindowTopList;
 import sketches.TopList;
+import subscription.CacheEntryObservable;
+import subscription.Subscriber;
+import utils.JsonUtil;
 
-import java.time.LocalDate;
+import java.io.IOException;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
@@ -32,30 +38,29 @@ public class NamedCache implements Cache<CacheEntry>{
         initializeSketches();
     }
 
-    public CacheEntry pointGet(TreeMap<String,String> key, LocalDate localDate) {
-        return get(key, localDate);
+    public CacheEntry pointGet(TreeMap<String,String> key, LocalDateTime localDateTime) {
+        return get(key, localDateTime);
     }
-    public List<CacheEntry> pointsGet(TreeMap<String,String> key, LocalDate startDate, LocalDate endDate) {
+    public List<CacheEntry> pointsGet(TreeMap<String,String> key, LocalDateTime startDateTime, LocalDateTime endDateTime) {
 
         List<CacheEntry> cacheEntries = new ArrayList<>();
-        int daysBetween = (int) ChronoUnit.DAYS.between(startDate, endDate);
+        int daysBetween = (int) ChronoUnit.DAYS.between(startDateTime.toLocalDate(), endDateTime.toLocalDate());
         for(int plusDays = 0; plusDays <= daysBetween; plusDays++){
-            LocalDate current = startDate.plusDays(plusDays);
+            LocalDateTime current = startDateTime.plusDays(plusDays);
             cacheEntries.add(get(key, current));
         }
         return cacheEntries;
 
     }
-    public CacheEntry rangeGet(TreeMap<String,String> key, LocalDate startDate, LocalDate endDate) {
+    public CacheEntry rangeGet(TreeMap<String,String> key, LocalDateTime startDateTime, LocalDateTime endDateTime) {
 
-        List<CacheEntry> cacheEntries = new ArrayList<>();
-        LocalDate createdDate = cacheConfig.getCreatedAt(); //cache created date
+        LocalDateTime createdDateTime = cacheConfig.getCreatedAt();//cache created date
 
-        int start = (int) ChronoUnit.DAYS.between(createdDate, startDate);
-        int end = (int) ChronoUnit.DAYS.between(createdDate, endDate);
+        int start = (int) ChronoUnit.DAYS.between(createdDateTime.toLocalDate(), startDateTime.toLocalDate());
+        int end = (int) ChronoUnit.DAYS.between(createdDateTime.toLocalDate(), endDateTime.toLocalDate());
         int rangeFrequency = cmr.get(key, start, end);
 
-        return new CacheRangeEntry(key, rangeFrequency, startDate, endDate);
+        return new CacheRangeEntry(key, rangeFrequency, startDateTime.toLocalDate(), endDateTime.toLocalDate());
 
     }
     public List<CacheEntry> topGet(int days){
@@ -63,14 +68,15 @@ public class NamedCache implements Cache<CacheEntry>{
         return topList.toCacheEntries();
     }
     @Override
-    public List<CacheEntry> put(TreeMap<String,String> key, LocalDate localDate, int amount) throws InvalidKeyException {
+    public List<CacheEntry> put(TreeMap<String,String> key, LocalDateTime localDateTime, int amount) throws InvalidKeyException {
         validateKey(key);
-        LocalDate createdDate = cacheConfig.getCreatedAt();
-        int daysBetween = (int) ChronoUnit.DAYS.between(createdDate, localDate);
+        LocalDateTime createdDateTime = cacheConfig.getCreatedAt();
+
+        int daysBetween = (int) ChronoUnit.DAYS.between(createdDateTime.toLocalDate(), localDateTime.toLocalDate());
 
 
-        if(hasKeysExpired(localDate)){
-            int numberOfExpiredKeys = (int) ChronoUnit.DAYS.between(cacheConfig.getExpireDate(), localDate) % cacheConfig.getExpireDays();
+        if(hasKeysExpired(localDateTime)){
+            int numberOfExpiredKeys = (int) ChronoUnit.DAYS.between(cacheConfig.getExpireDate(), localDateTime.toLocalDate()) % cacheConfig.getExpireDays();
             adjust(key, numberOfExpiredKeys);
         }
 
@@ -83,7 +89,14 @@ public class NamedCache implements Cache<CacheEntry>{
 
             int pointFrequency = cms.put(keyLevel, daysBetween, amount); //cmr put
             cmr.put(keyLevel, daysBetween, amount); //cms put
-            cacheEntries.add(new CachePointEntry(keyLevel, pointFrequency, localDate));
+            CachePointEntry cachePointEntry = new CachePointEntry(keyLevel, pointFrequency, localDateTime.toLocalDate());
+            cacheEntries.add(cachePointEntry);
+
+            if(CacheWebSocketHandler.cacheEntryObservables.containsKey(keyLevel)){
+                CacheEntryObservable cacheEntryObservable = CacheWebSocketHandler.cacheEntryObservables.get(keyLevel);
+                cacheEntryObservable.setValue(pointFrequency);
+            }
+
         }
 
         swt.put(key, daysBetween); //retain all in attributes
@@ -91,19 +104,20 @@ public class NamedCache implements Cache<CacheEntry>{
         return cacheEntries;
 
     }
-    protected CacheEntry get(TreeMap<String,String> key, LocalDate localDate){
-        LocalDate createdDate = cacheConfig.getCreatedAt();
-        int daysBetween = (int) ChronoUnit.DAYS.between(createdDate, localDate);
+    protected CacheEntry get(TreeMap<String,String> key, LocalDateTime localDateTime){
+        LocalDateTime createdDateTime = cacheConfig.getCreatedAt();
+        int daysBetween = (int) ChronoUnit.DAYS.between(createdDateTime.toLocalDate(), localDateTime.toLocalDate());
         int pointFrequency = cms.get(key, daysBetween);
-        return new CachePointEntry(key, pointFrequency, localDate);
+        return new CachePointEntry(key, pointFrequency, localDateTime.toLocalDate());
     }
 
     /*
     * Time stuff
     * Should probably be moved to another place
     * */
-    protected boolean hasKeysExpired(LocalDate localDate){
-        return localDate.isEqual(cacheConfig.getExpireDate()) || localDate.isAfter(cacheConfig.getExpireDate());
+
+    protected boolean hasKeysExpired(LocalDateTime localDateTime){
+        return localDateTime.isEqual(cacheConfig.getExpireDate()) || localDateTime.isAfter(cacheConfig.getExpireDate());
     }
     protected void adjust(Object key, int numberOfExpiredKeys){
 

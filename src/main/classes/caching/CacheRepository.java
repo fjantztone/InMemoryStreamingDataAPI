@@ -21,12 +21,13 @@ import java.util.concurrent.ConcurrentHashMap;
 //TODO: Very confusing return types, error handling etc
 public class CacheRepository {
 
-    public Map<String, Cache> caches = new ConcurrentHashMap<>();
+    public final static Map<String, Cache> caches = new ConcurrentHashMap<>();
 
     public CacheRepository() throws CacheAlreadyExistsException, CacheNotFoundException, InvalidKeyException {
         initialize();
     }
     protected CacheConfig toCacheConfig(String cacheConfig){
+
         GsonBuilder gsonBuilder = new GsonBuilder();
         gsonBuilder.registerTypeAdapter(CacheConfig.class, new CacheConfigDeserializer());
         Gson gson = gsonBuilder.create();
@@ -40,13 +41,13 @@ public class CacheRepository {
         Key _key = gson.fromJson(key, Key.class);
         return _key;
     }
-    public synchronized Cache editCache(String cacheConfig) throws CacheNotFoundException {
+    public Cache editCache(String cacheConfig) throws CacheNotFoundException { //not thread safe
         CacheConfig _cacheConfig = toCacheConfig(cacheConfig);
         Cache cache = getCache(_cacheConfig.getName());
         cache.setCacheConfig(_cacheConfig);
         return cache;
     }
-    public synchronized Cache createCache(String cacheConfig) throws CacheAlreadyExistsException, CacheNotFoundException {
+    public Cache createCache(String cacheConfig) throws CacheAlreadyExistsException, CacheNotFoundException {
         CacheConfig _cacheConfig = toCacheConfig(cacheConfig);
         String cacheName = _cacheConfig.getName();
         validateDuplicate(cacheName);
@@ -54,13 +55,13 @@ public class CacheRepository {
         caches.put(cacheName, cache);
         return cache;
     }
-    public synchronized Cache deleteCache(String cacheName) throws CacheNotFoundException {
+    public Cache deleteCache(String cacheName) throws CacheNotFoundException { //not thread safe
         validatePresence(cacheName);
         Cache removed = caches.remove(cacheName);
         return removed;
     }
 
-    public synchronized Cache getCache(String cacheName) throws CacheNotFoundException {
+    public Cache getCache(String cacheName) throws CacheNotFoundException {
         validatePresence(cacheName);
         return caches.get(cacheName);
     }
@@ -87,6 +88,7 @@ public class CacheRepository {
             for(Document doc : docs){
                 Key key = toKey(doc.toJson());
                 cache.put(key.getKey(), key.getCreatedAt(), 1);
+                System.out.println(key.getCreatedAt());
             }
             System.out.printf("Loaded %d keys into cache.\n", docs.size());
         }

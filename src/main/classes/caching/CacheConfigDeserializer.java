@@ -1,10 +1,9 @@
 package caching;
 
 import com.google.gson.*;
-import caching.CacheConfig;
 
 import java.lang.reflect.Type;
-import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.ZonedDateTime;
 
 /**
@@ -13,7 +12,7 @@ import java.time.ZonedDateTime;
 public class CacheConfigDeserializer implements JsonDeserializer<CacheConfig> {
     @Override
     public CacheConfig deserialize(JsonElement json, Type typeOfT, JsonDeserializationContext context) throws JsonParseException {
-        Gson gson = new GsonBuilder().registerTypeAdapter(LocalDate.class, (JsonDeserializer<LocalDate>) (json1, typeOfT1, context1) -> ZonedDateTime.parse(json1.getAsString()).toLocalDate()).create();
+        Gson gson = new GsonBuilder().registerTypeAdapter(LocalDateTime.class, (JsonDeserializer<LocalDateTime>) (json1, typeOfT1, context1) -> ZonedDateTime.parse(json1.getAsString()).toLocalDateTime()).create();
         CacheConfig cc = gson.fromJson(json, CacheConfig.class);
         cc.validate();
         return cc;
