@@ -38,7 +38,7 @@ public class CountMinSketch {
     }
 
 
-    public synchronized int put(Object key, int days, int amount){
+    public int put(Object key, int days, int amount){
         int min = Integer.MAX_VALUE;
 
         fnv.set(key.toString() + String.valueOf(days));
@@ -49,9 +49,10 @@ public class CountMinSketch {
             if(hash < 0)
                 hash = ~hash;
 
-            register.addAndGet(i*width + hash, amount);
-            if(register.get(i*width + hash) < min)
-                min = register.get(i*width + hash);
+            int value = register.addAndGet(i*width + hash, amount);
+
+            if(value < min)
+                min = value;
 
         }
         return min;

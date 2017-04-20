@@ -1,37 +1,48 @@
 package controllers;
 
-import caching.Cache;
-import caching.CacheRepository;
+import caching.*;
+import com.mongodb.MongoClient;
+import com.mongodb.client.FindIterable;
+import com.mongodb.client.MongoDatabase;
 import exceptions.*;
+import org.bson.Document;
+import static utils.JsonUtil.*;
 
-import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.time.format.DateTimeParseException;
 import java.util.List;
 import java.util.TreeMap;
 import java.util.logging.Logger;
+import static utils.DateUtil.validateISODate;
 
 /**
  * Created by heka1203 on 2017-04-01.
  */
 
-
+//TODO: Fix cachekeys table
 public class CacheController {
-    //Should be read from file later on.
+
+    private MongoClient mongoClient = new MongoClient("localhost", 27017);
+    private MongoDatabase mongoDatabase = mongoClient.getDatabase("streamingdata");
+
     protected CacheRepository cacheRepository;
+
     public static Logger logger = Logger.getLogger(CacheController.class.getName());
 
     public CacheController() throws CacheAlreadyExistsException, CacheNotFoundException, InvalidKeyException {
         cacheRepository = new CacheRepository();
     }
-
-    public Object create(String cacheConfig) throws CacheNotFoundException, CacheAlreadyExistsException { //String cacheConfig
-        return cacheRepository.createCache(cacheConfig).getCacheConfig();
+    public Object create(CacheConfig cacheConfig) throws CacheAlreadyExistsException { //DB
+        cacheRepository.addCache(new CacheImpl(cacheConfig));
+        return cacheConfig;
     }
-    public Object edit(String cacheConfig) throws CacheNotFoundException { //String cacheConfig
-        return cacheRepository.editCache(cacheConfig).getCacheConfig();
+    public Object edit(CacheConfig cacheConfig) throws CacheNotFoundException { //DB
+        Cache cache = cacheRepository.getCache(cacheConfig.getName());
+        synchronized (cache){
+            cache.setCacheConfig(cacheConfig);
+        }
+        return cacheConfig;
     }
-    public Object delete(String cacheName) throws CacheNotFoundException { //String cacheName
+    public Object delete(String cacheName) throws CacheNotFoundException { //DB
         return cacheRepository.deleteCache(cacheName).getCacheConfig();
     }
     public Object get(String cacheName) throws CacheNotFoundException {
@@ -39,43 +50,45 @@ public class CacheController {
     }
 
     public Object putKey(String cacheName, TreeMap<String,String> key) throws CacheNotFoundException, RequiresValidDateException, InvalidKeyException {
-        Cache cache = cacheRepository.getCache(cacheName);
-        return cache.put(key, LocalDateTime.now(), 1);
+        return cacheRepository.getCache(cacheName).put(key, LocalDateTime.now(), 1);
     }
     public Object getPointEntry(String cacheName, String date, TreeMap<String,String> key) throws RequiresValidDateException, CacheNotFoundException {
         validateISODate(date);
-        Cache cache = cacheRepository.getCache(cacheName);
-
-        return cache.pointGet(key, LocalDateTime.parse(date));
+        return cacheRepository.getCache(cacheName).pointGet(key, LocalDateTime.parse(date));
     }
     public Object getPointsEntry(String cacheName, String startDate, String endDate, TreeMap<String,String> key) throws RequiresValidDateException, CacheNotFoundException {
         validateISODate(startDate);
         validateISODate(endDate);
-        Cache cache = cacheRepository.getCache(cacheName);
-
-        return cache.pointsGet(key, LocalDateTime.parse(startDate), LocalDateTime.parse(endDate));
+        return cacheRepository.getCache(cacheName).pointsGet(key, LocalDateTime.parse(startDate), LocalDateTime.parse(endDate));
     }
 
     public Object getRangeEntry(String cacheName, String startDate, String endDate, TreeMap<String,String> key) throws RequiresValidDateException, CacheNotFoundException {
         validateISODate(startDate);
         validateISODate(endDate);
-        Cache cache = cacheRepository.getCache(cacheName);
-
-        return cache.rangeGet(key, LocalDateTime.parse(startDate), LocalDateTime.parse(endDate));
+        return cacheRepository.getCache(cacheName).rangeGet(key, LocalDateTime.parse(startDate), LocalDateTime.parse(endDate));
     }
     public Object getTopEntry(String cacheName, int days) throws CacheNotFoundException {
-        Cache cache = cacheRepository.getCache(cacheName);
-        return cache.topGet(days);
+        return cacheRepository.getCache(cacheName).topGet(days);
     }
 
-    public void validateISODate(String date) throws RequiresValidDateException {
-        try{
-            LocalDateTime localDateTime = LocalDateTime.parse(date);
-        }
-        catch(DateTimeParseException e){
-            throw new RequiresValidDateException("The date must be in ISO-8601 format, i.e (YYYY-MM-DDTHH:mm:ss).");
+    protected void initialize() { //edits must be done in database aswell..
+
+        FindIterable<Document> cacheConfigs = mongoDatabase.getCollection("cacheconfigs").find().projection(Document.parse("{'_id' : 0}"));
+
+        for(Document cc : cacheConfigs){
+            //convert and insert keys
+            CacheConfig cacheConfig = fromCacheConfig(cc.toJson());
+            Cache cache = new CacheImpl(cacheConfig);
+            @SuppressWarnings("unchecked")
+            List<Document> docs = (List<Document>)cc.get("data");
+            for(Document doc : docs){
+                Key key = toKey(doc.toJson());
+                cache.put(key.getKey(), key.getCreatedAt(), 1);
+            }
+            System.out.printf("Loaded %d keys into cache.\n", docs.size());
         }
     }
+
 
 
 }

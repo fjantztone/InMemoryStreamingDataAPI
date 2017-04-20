@@ -1,19 +1,17 @@
 package caching;
 
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
 import exceptions.InvalidKeyException;
 import hashing.FNV;
-import org.eclipse.jetty.util.ConcurrentHashSet;
-import org.eclipse.jetty.websocket.api.Session;
 import services.CacheWebSocketHandler;
 import sketches.CountMinRange;
 import sketches.CountMinSketch;
 import sketches.SlidingWindowTopList;
 import sketches.TopList;
 import subscription.CacheEntryObservable;
-import subscription.Subscriber;
-import utils.JsonUtil;
+import static utils.JsonUtil.*;
 
-import java.io.IOException;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
@@ -26,14 +24,14 @@ import java.util.logging.Logger;
 
 //TODO: FIX NAMED TOPLIST IN CACHE CONFIG AND SEPARATE
 
-public class NamedCache implements Cache<CacheEntry>{
-    private static Logger logger = Logger.getLogger(NamedCache.class.getName());
+public class CacheImpl implements Cache<CacheEntry>{
+    private static Logger logger = Logger.getLogger(CacheImpl.class.getName());
     private CountMinSketch cms;
     private CountMinRange cmr;
     private SlidingWindowTopList swt;
     private CacheConfig cacheConfig;
 
-    public NamedCache(CacheConfig cacheConfig) {
+    public CacheImpl(CacheConfig cacheConfig) {
         this.cacheConfig = Objects.requireNonNull(cacheConfig);
         initializeSketches();
     }
@@ -94,7 +92,10 @@ public class NamedCache implements Cache<CacheEntry>{
 
             if(CacheWebSocketHandler.cacheEntryObservables.containsKey(keyLevel)){
                 CacheEntryObservable cacheEntryObservable = CacheWebSocketHandler.cacheEntryObservables.get(keyLevel);
-                cacheEntryObservable.setValue(pointFrequency);
+                synchronized (cacheEntryObservable){
+                    cacheEntryObservable.setValue(pointFrequency);
+                }
+
             }
 
         }
@@ -128,6 +129,8 @@ public class NamedCache implements Cache<CacheEntry>{
 
     }
     public void validateKey(TreeMap<String,String> key) throws InvalidKeyException { //May be a bad place
+        if(key == null)
+            throw new InvalidKeyException("key == null");
         List<String> attributes = getCacheConfig().getAttributes();
         key.keySet().retainAll(attributes);
         if(key.size() != attributes.size())
