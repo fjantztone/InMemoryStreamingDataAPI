@@ -9,12 +9,13 @@ import java.util.TreeMap;
  */
 public class Key {
     private LocalDateTime createdAt;
+    private LocalDateTime expireAt;
     private TreeMap<String, String> key;
 
     public LocalDateTime getCreatedAt() {
         return createdAt;
     }
-
+    public LocalDateTime getExpireAt() { return expireAt; }
     public TreeMap<String, String> getKey() {
         return key;
     }

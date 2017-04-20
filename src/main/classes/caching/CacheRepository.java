@@ -21,10 +21,10 @@ import java.util.concurrent.ConcurrentHashMap;
 //TODO: Very confusing return types, error handling etc
 public class CacheRepository {
 
-    public final static Map<String, Cache> caches = new ConcurrentHashMap<>();
+    private final Map<String, Cache> caches;
 
     public CacheRepository(Map<String,Cache> caches){
-        caches.putAll(caches);
+        this.caches = new ConcurrentHashMap<>(caches);
     }
 
     public Cache addCache(Cache cache) throws CacheAlreadyExistsException {

@@ -12,8 +12,8 @@ import java.time.ZonedDateTime;
 public class CacheConfigDeserializer implements JsonDeserializer<CacheConfig> {
     @Override
     public CacheConfig deserialize(JsonElement json, Type typeOfT, JsonDeserializationContext context) throws JsonParseException {
-        Gson gson = new GsonBuilder().registerTypeAdapter(LocalDateTime.class, (JsonDeserializer<LocalDateTime>) (json1, typeOfT1, context1) -> ZonedDateTime.parse(json1.getAsString()).toLocalDateTime()).create();
-        CacheConfig cc = gson.fromJson(json, CacheConfig.class);
+        //Gson gson = new GsonBuilder().registerTypeAdapter(LocalDateTime.class, (JsonDeserializer<LocalDateTime>) (json1, typeOfT1, context1) -> ZonedDateTime.parse(json1.getAsString()).toLocalDateTime()).create();
+        CacheConfig cc = new Gson().fromJson(json, CacheConfig.class);
         cc.validate();
         return cc;
     }

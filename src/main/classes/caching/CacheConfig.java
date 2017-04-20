@@ -18,7 +18,7 @@ public class CacheConfig implements Validatable {
     public static int TOP_ITEMS = 5;
     private List<String> attributes;
     private List<List<String>> levels;
-    private LocalDateTime createdAt;
+    private LocalDateTime createdAt = LocalDateTime.now();
 
     public void validate(){
         if(getName() == null) throw new IllegalStateException("Cache name is required.");

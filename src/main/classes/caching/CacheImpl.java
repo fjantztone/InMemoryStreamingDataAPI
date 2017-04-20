@@ -73,7 +73,7 @@ public class CacheImpl implements Cache<CacheEntry>{
         int daysBetween = (int) ChronoUnit.DAYS.between(createdDateTime.toLocalDate(), localDateTime.toLocalDate());
 
 
-        if(hasKeysExpired(localDateTime)){
+        if(hasKeysExpired(localDateTime)){ //TODO: update expire date in DB if wrapped?
             int numberOfExpiredKeys = (int) ChronoUnit.DAYS.between(cacheConfig.getExpireDate(), localDateTime.toLocalDate()) % cacheConfig.getExpireDays();
             adjust(key, numberOfExpiredKeys);
         }
