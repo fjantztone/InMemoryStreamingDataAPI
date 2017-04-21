@@ -134,7 +134,7 @@ public class CacheImpl implements Cache<CacheEntry>{
             throw new InvalidKeyException(String.format("The provided key does not match the required attributes (%s).", attributes));
     }
     protected void initializeSketches() {
-        final int width = 1 << 14;
+        final int width = 1 << 14; //Make user defined!
         final int depth = 4;
         final int numberOfSketches = (int)Math.ceil(cacheConfig.getExpireDays() / Math.log(2));
         this.cms = new CountMinSketch(width, depth, new FNV());
@@ -143,7 +143,7 @@ public class CacheImpl implements Cache<CacheEntry>{
     }
     @Override
     public void setCacheConfig(CacheConfig cacheConfig) {
-        this.cacheConfig = Objects.requireNonNull(cacheConfig);
+        this.cacheConfig = cacheConfig;
     }
 
     @Override

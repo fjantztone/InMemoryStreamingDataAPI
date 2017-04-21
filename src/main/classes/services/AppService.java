@@ -7,7 +7,7 @@ import exceptions.CacheAlreadyExistsException;
 import exceptions.CacheNotFoundException;
 import exceptions.InvalidKeyException;
 import exceptions.RequiresValidDateException;
-import response.ResponseError;
+import common.ResponseError;
 
 import static utils.JsonUtil.*;
 import static spark.Spark.*;

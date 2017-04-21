@@ -44,12 +44,12 @@ public class CountMinSketch {
         fnv.set(key.toString() + String.valueOf(days));
 
         for(int i = 0; i != depth; i++){
-            //int hash = (fnv.next() & 0x7fffffff) % width;
             int hash = fnv.next() % width;
             if(hash < 0)
                 hash = ~hash;
 
-            int value = register.addAndGet(i*width + hash, amount);
+            int index = i*width + hash;
+            int value = register.addAndGet(index, amount);
 
             if(value < min)
                 min = value;

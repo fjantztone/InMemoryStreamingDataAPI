@@ -6,6 +6,8 @@ import caching.Key;
 import caching.KeyDeserializer;
 import com.google.gson.*;
 import spark.ResponseTransformer;
+import subscription.SubscriberMessage;
+import subscription.SubscriberMessageDeserializer;
 
 import java.util.TreeMap;
 
@@ -29,6 +31,10 @@ public class JsonUtil {
     public static Key fromKey(String jsonKey){
         Gson gson = customFromGson(Key.class, new KeyDeserializer());
         return gson.fromJson(jsonKey, Key.class);
+    }
+    public static SubscriberMessage fromSubscriberMessage(String jsonMessage){
+        Gson gson = customFromGson(SubscriberMessage.class, new SubscriberMessageDeserializer());
+        return gson.fromJson(jsonMessage, SubscriberMessage.class);
     }
 
     public static String toJson(Object object){
