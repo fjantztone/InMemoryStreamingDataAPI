@@ -3,7 +3,6 @@ package caching;
 import exceptions.InvalidKeyException;
 import hashing.FNV;
 import models.CacheConfig;
-import org.junit.Assert;
 import services.CacheWebSocketHandler;
 import sketches.CountMinRange;
 import sketches.CountMinSketch;
@@ -14,7 +13,6 @@ import subscription.CacheEntryObservable;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
-import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
@@ -39,7 +37,7 @@ public class CacheImpl implements Cache<CacheEntry>{
     public List<CacheEntry> pointsGet(TreeMap<String,String> key, LocalDateTime startDateTime, LocalDateTime endDateTime) {
 
         List<CacheEntry> cacheEntries = new ArrayList<>();
-        int daysBetween = (int) ChronoUnit.DAYS.between(startDateTime.toLocalDate(), endDateTime.toLocalDate());
+        int daysBetween = (int) ChronoUnit.DAYS.between(startDateTime, endDateTime);
         for(int plusDays = 0; plusDays <= daysBetween; plusDays++){
             LocalDateTime current = startDateTime.plusDays(plusDays);
             cacheEntries.add(get(key, current));
@@ -51,11 +49,11 @@ public class CacheImpl implements Cache<CacheEntry>{
 
         LocalDateTime createdDateTime = cacheConfig.getCreatedAt();//cache created date
 
-        int start = (int) ChronoUnit.DAYS.between(createdDateTime.toLocalDate(), startDateTime.toLocalDate());
-        int end = (int) ChronoUnit.DAYS.between(createdDateTime.toLocalDate(), endDateTime.toLocalDate());
+        int start = (int) ChronoUnit.DAYS.between(createdDateTime, startDateTime);
+        int end = (int) ChronoUnit.DAYS.between(createdDateTime, endDateTime);
         int rangeFrequency = cmr.get(key, start, end);
 
-        return new CacheRangeEntry(key, rangeFrequency, startDateTime.toLocalDate().toString(), endDateTime.toLocalDate().toString());
+        return new CacheRangeEntry(key, rangeFrequency, startDateTime, endDateTime);
 
     }
     public List<CacheEntry> topGet(int days){
@@ -67,13 +65,7 @@ public class CacheImpl implements Cache<CacheEntry>{
         validateKey(key);
         LocalDateTime createdDateTime = cacheConfig.getCreatedAt();
 
-        int daysBetween = (int) ChronoUnit.DAYS.between(createdDateTime.toLocalDate(), localDateTime.toLocalDate());
-
-
-        if(hasKeysExpired(localDateTime)){ //TODO: update expire date in DB if wrapped?
-            int numberOfExpiredKeys = (int) ChronoUnit.DAYS.between(cacheConfig.getExpireAt(), localDateTime) % cacheConfig.getExpireDays(); //<-- modifiable
-            adjust(key, numberOfExpiredKeys);
-        }
+        int daysBetween = (int) ChronoUnit.DAYS.between(createdDateTime, localDateTime);
 
         List<List<String>> levels = cacheConfig.getLevels();
         List<CacheEntry> cacheEntries = new ArrayList<>(levels.size());
@@ -84,7 +76,7 @@ public class CacheImpl implements Cache<CacheEntry>{
 
             int pointFrequency = cms.put(keyLevel, daysBetween, amount); //cmr put
             cmr.put(keyLevel, daysBetween, amount); //cms put
-            CachePointEntry cachePointEntry = new CachePointEntry(keyLevel, pointFrequency, localDateTime.toLocalDate().toString());
+            CachePointEntry cachePointEntry = new CachePointEntry(keyLevel, pointFrequency, localDateTime);
             cacheEntries.add(cachePointEntry);
 
             if(CacheWebSocketHandler.cacheEntryObservables.containsKey(keyLevel)){
@@ -104,30 +96,23 @@ public class CacheImpl implements Cache<CacheEntry>{
     }
     protected CacheEntry get(TreeMap<String,String> key, LocalDateTime localDateTime){
         LocalDateTime createdDateTime = cacheConfig.getCreatedAt();
-        int daysBetween = (int) ChronoUnit.DAYS.between(createdDateTime.toLocalDate(), localDateTime.toLocalDate());
+        int daysBetween = (int) ChronoUnit.DAYS.between(createdDateTime, localDateTime);
         int pointFrequency = cms.get(key, daysBetween);
-        return new CachePointEntry(key, pointFrequency, localDateTime.toLocalDate().toString());
+        return new CachePointEntry(key, pointFrequency, localDateTime);
     }
 
     /*
     * Time stuff
     * Should probably be moved to another place
     * */
-
-    protected boolean hasKeysExpired(LocalDateTime localDateTime){
-        return localDateTime.isEqual(cacheConfig.getExpireAt()) || localDateTime.isAfter(cacheConfig.getExpireAt());
+    @Override
+    public boolean hasExpired(LocalDateTime now){
+        return now.isEqual(cacheConfig.getExpireAt()) || now.isAfter(cacheConfig.getExpireAt());
     }
-    protected void adjust(Object key, int numberOfExpiredKeys){
 
-        logger.log(Level.INFO, String.format("Found %d expired key candidates in cache, attempting to remove them.", numberOfExpiredKeys + 1));
-        for(int day = 0; day < numberOfExpiredKeys; day++){
-            cms.remove(key, day); //VERY CHEAP OPERATION SO NP
-        }
-
-    }
     public void validateKey(TreeMap<String,String> key) throws InvalidKeyException { //May be a bad place
         if(key == null)
-            throw new InvalidKeyException("key == null");
+            throw new IllegalArgumentException("key == null");
         List<String> attributes = getCacheConfig().getAttributes();
         key.keySet().retainAll(attributes);
         if(key.size() != attributes.size())
@@ -136,7 +121,7 @@ public class CacheImpl implements Cache<CacheEntry>{
     private void initializeSketches() {
         final int width = 1 << 14; //TODO: Make user defined, based on measurements?
         final int depth = 4;
-        final int numberOfSketches = (int)Math.ceil(cacheConfig.getExpireDays() / Math.log(2));
+        final int numberOfSketches = (int)Math.ceil(cacheConfig.getTimeToLive() / Math.log(2)); //argument to constructor
         this.cms = new CountMinSketch(width, depth, new FNV());
         this.cmr = new CountMinRange(width, depth, numberOfSketches);
         this.swt = new SlidingWindowTopList(7, 5); //TODO: user-defined

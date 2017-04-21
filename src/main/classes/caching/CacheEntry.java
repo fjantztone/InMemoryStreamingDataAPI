@@ -1,30 +1,35 @@
 package caching;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
+
 import java.util.Map;
 
 /**
  * Created by heka1203 on 2017-04-05.
  */
-public class CacheEntry<T, Integer> implements Map.Entry<T,Integer> {
+
+public class CacheEntry<T, Integer> {
     private T key;
     private Integer value;
 
-    public CacheEntry(T key, Integer value){
+    @JsonCreator
+    public CacheEntry(@JsonProperty(value="key", required = true)T key, @JsonProperty(value="value", required = true)Integer value){
         this.key = key;
         this.value = value;
     }
 
-    @Override
+    //@Override
     public T getKey() {
         return this.key;
     }
 
-    @Override
+    //@Override
     public Integer getValue() {
         return this.value;
     }
 
-    @Override
+   // @Override
     public Integer setValue(Integer value) {
         this.value = value;
         return value;

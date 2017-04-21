@@ -7,6 +7,7 @@ import com.mongodb.MongoClient;
 import com.mongodb.client.FindIterable;
 import com.mongodb.client.MongoDatabase;
 
+
 import exceptions.*;
 import models.*;
 import models.Key;
@@ -14,9 +15,7 @@ import org.bson.Document;
 
 import java.io.IOException;
 import java.time.LocalDateTime;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.TreeMap;
+import java.util.*;
 import java.util.logging.Logger;
 
 import static utils.DateUtil.*;
@@ -41,14 +40,16 @@ public class CacheController {
         initialize();
     }
     public Object create(CacheConfig cacheConfig) throws CacheAlreadyExistsException, JsonProcessingException { //DB
+        String cacheName = cacheConfig.getName();
         cacheRepository.addCache(new CacheImpl(cacheConfig));
         mongoDatabase.getCollection(CACHECONFIGS_COLLECTION_NAME).insertOne(Document.parse(toJson(cacheConfig)));
+        mongoDatabase.getCollection(CACHEKEYS_COLLECTION_NAME).insertOne(new Document("name", cacheName).append("keys", new ArrayList<>())); //<-- hmm
         return cacheConfig;
     }
     public Object edit(CacheConfig cacheConfig) throws CacheNotFoundException, JsonProcessingException { //DB
         String cacheName = cacheConfig.getName();
         Cache cache = cacheRepository.getCache(cacheName);
-        mongoDatabase.getCollection(CACHECONFIGS_COLLECTION_NAME).findOneAndUpdate(new Document("name", cacheName), Document.parse(toJson(cacheConfig)));
+        mongoDatabase.getCollection(CACHECONFIGS_COLLECTION_NAME).findOneAndUpdate(new Document("name", cacheName), new Document("$set", Document.parse(toJson(cacheConfig))));
 
         synchronized (cache){
             cache.setCacheConfig(cacheConfig);
@@ -56,22 +57,28 @@ public class CacheController {
         return cacheConfig;
     }
     public Object delete(String cacheName) throws CacheNotFoundException { //DB
-        mongoDatabase.getCollection(CACHECONFIGS_COLLECTION_NAME).findOneAndDelete(new Document("name", cacheName));
+        mongoDatabase.getCollection(CACHECONFIGS_COLLECTION_NAME).deleteOne(new Document("name", cacheName));
+        mongoDatabase.getCollection(CACHEKEYS_COLLECTION_NAME).deleteOne(new Document("name", cacheName));
         return cacheRepository.deleteCache(cacheName).getCacheConfig();
     }
     public Object get(String cacheName) throws CacheNotFoundException {
         return cacheRepository.getCache(cacheName).getCacheConfig();
     }
 
-    public Object putKey(String cacheName, TreeMap<String,String> key) throws CacheNotFoundException, RequiresValidDateException, InvalidKeyException, JsonProcessingException { //DB
+    public Object putKey(String cacheName, TreeMap<String,String> key) throws CacheNotFoundException, RequiresValidDateException, InvalidKeyException, JsonProcessingException {
 
-        Cache cache = cacheRepository.getCache(cacheName);
         LocalDateTime now = LocalDateTime.now();
-        int expireDays = cache.getCacheConfig().getExpireDays();
-        LocalDateTime expireDateTime = now.plusDays(expireDays);
-        Key keyObj = new Key(key, now, expireDateTime);
+        Cache cache = cacheRepository.getCache(cacheName);
+        if(cache.hasExpired(now)){ //lazy expire
+            CacheConfig cacheConfig = cache.getCacheConfig();
+            delete(cacheName); //in cc hashmap
+            cache = new CacheImpl(cacheConfig);
+        }
+        Key keyObj = new Key(key, now);
 
-        mongoDatabase.getCollection(CACHEKEYS_COLLECTION_NAME).insertOne(Document.parse(toJson(keyObj)));
+        Document filter = new Document("name", cacheName);
+        Document update = new Document("$push", new Document("keys", Document.parse(toJson(keyObj))));
+        mongoDatabase.getCollection(CACHEKEYS_COLLECTION_NAME).updateOne(filter, update);
         return cache.put(key, now, 1);
     }
     public Object getPointEntry(String cacheName, String date, TreeMap<String,String> key) throws RequiresValidDateException, CacheNotFoundException {
@@ -103,12 +110,14 @@ public class CacheController {
             CacheConfig cacheConfig = objectMapper.readValue(dcc.toJson(), CacheConfig.class);
             Cache cache = new CacheImpl(cacheConfig);
             String cacheName = cacheConfig.getName();
-            FindIterable<Document> cacheKeys = mongoDatabase.getCollection(CACHEKEYS_COLLECTION_NAME).find(new Document("name", cacheName));
-
-            for(Document dck : cacheKeys){
-                Key key = objectMapper.readValue(dck.toJson(), Key.class);
+            Document dcck = mongoDatabase.getCollection(CACHEKEYS_COLLECTION_NAME).find(new Document("name", cacheName)).first();
+            @SuppressWarnings("unchecked")
+            List<Document> cacheKeys = (List<Document>)dcck.get("keys");
+            for(Document cacheKey : cacheKeys){
+                Key key = objectMapper.readValue(cacheKey.toJson(), Key.class);
                 cache.put(key.getKey(), key.getCreatedAt(), 1);
             }
+            logger.info(String.format("Loaded %d keys into %s.", cacheKeys.size(), cacheName));
             caches.put(cacheName, cache);
 
         }

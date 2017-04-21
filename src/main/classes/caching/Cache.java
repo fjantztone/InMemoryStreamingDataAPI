@@ -18,6 +18,7 @@ public interface Cache<E> {
     List<E> topGet(int days);
     List<E> put(TreeMap<String,String> key, LocalDateTime localDateTime, int amount) throws InvalidKeyException;
 
+    boolean hasExpired(LocalDateTime now);
     void setCacheConfig(CacheConfig cacheConfig);
     CacheConfig getCacheConfig();
 }

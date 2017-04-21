@@ -4,7 +4,6 @@ import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 
@@ -16,11 +15,11 @@ import java.util.List;
  */
 @JsonIgnoreProperties({"_id", "expireAt"})
 public class CacheConfig{
-    private static int MAX_EXPIRE_DAYS = 31;
-    private static int MIN_EXPIRE_DAYS = 1;
+    private static int MAX_TIME_TO_LIVE = 31;
+    private static int MIN_TIME_TO_LIVE = 1;
 
     private String name;
-    private int expireDays; // days
+    private int timeToLive; // days
     private List<String> attributes;
     private List<List<String>> levels;
     @JsonSerialize(using = MongoDateSerializer.class)
@@ -29,14 +28,14 @@ public class CacheConfig{
 
     @JsonCreator
     public CacheConfig(@JsonProperty(value="name", required = true)String name,
-                        @JsonProperty(value="expireDays", required = true)int expireDays,
+                        @JsonProperty(value="timeToLive", required = true)int timeToLive,
                          @JsonProperty(value="attributes", required = true)List<String> attributes,
                           @JsonProperty(value="levels", required = true)List<List<String>> levels){
         this.name = name;
-        if(expireDays < MIN_EXPIRE_DAYS || expireDays > MAX_EXPIRE_DAYS)
-            throw new IllegalArgumentException(String.format("Expire days must be between %d and %d days.", MIN_EXPIRE_DAYS, MAX_EXPIRE_DAYS));
+        if(timeToLive > MAX_TIME_TO_LIVE || timeToLive < MIN_TIME_TO_LIVE)
+            throw new IllegalArgumentException(String.format("timeToLive must be between %d and %d days.", MIN_TIME_TO_LIVE, MAX_TIME_TO_LIVE));
 
-        this.expireDays = expireDays;
+        this.timeToLive = timeToLive;
         this.attributes = attributes;
         this.levels = levels;
     }
@@ -45,8 +44,8 @@ public class CacheConfig{
         return name;
     }
 
-    public int getExpireDays() {
-        return expireDays;
+    public int getTimeToLive() {
+        return timeToLive;
     }
 
     public List<String> getAttributes() {
@@ -61,7 +60,7 @@ public class CacheConfig{
         return createdAt;
     }
     @JsonIgnore
-    public LocalDateTime getExpireAt(){ return getCreatedAt().plusDays(getExpireDays()); }
+    public LocalDateTime getExpireAt(){ return getCreatedAt().plusDays(getTimeToLive()); }
 
 
 }
