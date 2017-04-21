@@ -29,7 +29,7 @@ public class CacheWebSocketHandler {
         for(CacheEntryObservable cacheEntryObservable : cacheEntryObservables.values()){
             cacheEntryObservable.removeObserver(new Subscriber(session));
         }
-        logger.log(Level.INFO, String.format("Client closed socket: (status: %d, reason: %s).", statusCode, reason));
+        logger.info(String.format("Client closed socket: (status: %d, reason: %s).", statusCode, reason));
     }
 
     @OnWebSocketMessage
