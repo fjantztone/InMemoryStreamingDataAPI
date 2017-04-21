@@ -1,14 +1,15 @@
 package services;
 
 import caching.CacheEntry;
-import com.google.gson.JsonSyntaxException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import models.SubscriberMessage;
 import org.eclipse.jetty.websocket.api.*;
 import org.eclipse.jetty.websocket.api.annotations.*;
 import subscription.CacheEntryObservable;
 import subscription.Subscriber;
-import subscription.SubscriberMessage;
-import static utils.JsonUtil.fromSubscriberMessage;
+import static models.SubscriberMessage.*;
 
+import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.logging.Level;
@@ -19,8 +20,6 @@ import java.util.logging.Logger;
 public class CacheWebSocketHandler {
     private static Logger logger = Logger.getLogger(CacheWebSocketHandler.class.getName());
     public static final ConcurrentHashMap<TreeMap<String,String>, CacheEntryObservable> cacheEntryObservables = new ConcurrentHashMap<>();
-    public static final String SUBSCRIBE_ACTION = "SUB";
-    public static final String UNSUBSCRIBE_ACTION = "UNSUB";
 
     @OnWebSocketConnect
     public void connected(Session session) {session.setIdleTimeout(1000 * 60 * 5);} //currently: drop after 5 min inactivity
@@ -36,7 +35,8 @@ public class CacheWebSocketHandler {
     @OnWebSocketMessage
     public void message(Session session, String message) {
         try{
-            SubscriberMessage subscriberMessage = fromSubscriberMessage(message);
+            ObjectMapper objectMapper = new ObjectMapper();
+            SubscriberMessage subscriberMessage = objectMapper.readValue(message, SubscriberMessage.class);
 
             if(subscriberMessage.getAction().equals(SUBSCRIBE_ACTION)){
                 for(TreeMap<String,String> key : subscriberMessage.getKeys()){
@@ -64,7 +64,7 @@ public class CacheWebSocketHandler {
 
 
         }
-        catch(JsonSyntaxException | IllegalStateException e){
+        catch(IOException | IllegalArgumentException e){
             logger.info(e.getMessage());
             session.close(400, e.getMessage());
         }

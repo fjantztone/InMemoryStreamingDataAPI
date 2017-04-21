@@ -1,6 +1,7 @@
 package caching;
 
 import exceptions.InvalidKeyException;
+import models.CacheConfig;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;

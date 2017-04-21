@@ -16,12 +16,10 @@ import java.util.TreeMap;
 public class TopList{
     public CountMinSketch sketch;
     public FixedSizeNoDuplicatesPriorityQueue<TreeMap<String, String>> heap;
-    private final int numberOfItems;
     private final int dayResidual;
 
     public TopList(int numberOfItems, int dayResidual){
         this.sketch = new CountMinSketch(1 << 12, 4, new FNV());
-        this.numberOfItems = numberOfItems;
         this.dayResidual = dayResidual;
         heap = new FixedSizeNoDuplicatesPriorityQueue<>(numberOfItems, new SketchComparator(sketch, dayResidual));
     }

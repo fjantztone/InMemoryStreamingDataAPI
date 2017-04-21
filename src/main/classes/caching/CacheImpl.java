@@ -2,6 +2,8 @@ package caching;
 
 import exceptions.InvalidKeyException;
 import hashing.FNV;
+import models.CacheConfig;
+import org.junit.Assert;
 import services.CacheWebSocketHandler;
 import sketches.CountMinRange;
 import sketches.CountMinSketch;
@@ -18,8 +20,6 @@ import java.util.logging.Logger;
 /**
  * Created by heka1203 on 2017-04-01.
  */
-
-//TODO: FIX NAMED TOPLIST IN CACHE CONFIG AND SEPARATE
 
 public class CacheImpl implements Cache<CacheEntry>{
     private static Logger logger = Logger.getLogger(CacheImpl.class.getName());
@@ -71,7 +71,7 @@ public class CacheImpl implements Cache<CacheEntry>{
 
 
         if(hasKeysExpired(localDateTime)){ //TODO: update expire date in DB if wrapped?
-            int numberOfExpiredKeys = (int) ChronoUnit.DAYS.between(cacheConfig.getExpireDateTime(), localDateTime) % cacheConfig.getExpireDays(); //<-- modifiable
+            int numberOfExpiredKeys = (int) ChronoUnit.DAYS.between(cacheConfig.getExpireAt(), localDateTime) % cacheConfig.getExpireDays(); //<-- modifiable
             adjust(key, numberOfExpiredKeys);
         }
 
@@ -115,7 +115,7 @@ public class CacheImpl implements Cache<CacheEntry>{
     * */
 
     protected boolean hasKeysExpired(LocalDateTime localDateTime){
-        return localDateTime.isEqual(cacheConfig.getExpireDateTime()) || localDateTime.isAfter(cacheConfig.getExpireDateTime());
+        return localDateTime.isEqual(cacheConfig.getExpireAt()) || localDateTime.isAfter(cacheConfig.getExpireAt());
     }
     protected void adjust(Object key, int numberOfExpiredKeys){
 
@@ -133,13 +133,13 @@ public class CacheImpl implements Cache<CacheEntry>{
         if(key.size() != attributes.size())
             throw new InvalidKeyException(String.format("The provided key does not match the required attributes (%s).", attributes));
     }
-    protected void initializeSketches() {
-        final int width = 1 << 14; //Make user defined!
+    private void initializeSketches() {
+        final int width = 1 << 14; //TODO: Make user defined, based on measurements?
         final int depth = 4;
         final int numberOfSketches = (int)Math.ceil(cacheConfig.getExpireDays() / Math.log(2));
         this.cms = new CountMinSketch(width, depth, new FNV());
         this.cmr = new CountMinRange(width, depth, numberOfSketches);
-        this.swt = new SlidingWindowTopList(CacheConfig.TOP_WINDOW, CacheConfig.TOP_ITEMS);
+        this.swt = new SlidingWindowTopList(7, 5); //TODO: user-defined
     }
     @Override
     public void setCacheConfig(CacheConfig cacheConfig) {

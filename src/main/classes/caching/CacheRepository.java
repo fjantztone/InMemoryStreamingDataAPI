@@ -1,16 +1,7 @@
 package caching;
 
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
-import com.mongodb.MongoClient;
-import com.mongodb.client.FindIterable;
-import com.mongodb.client.MongoDatabase;
 import exceptions.CacheAlreadyExistsException;
 import exceptions.CacheNotFoundException;
-import exceptions.InvalidKeyException;
-import org.bson.Document;
-
-import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
