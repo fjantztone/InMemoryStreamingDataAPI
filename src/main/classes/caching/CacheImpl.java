@@ -1,7 +1,5 @@
 package caching;
 
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
 import exceptions.InvalidKeyException;
 import hashing.FNV;
 import services.CacheWebSocketHandler;
@@ -10,7 +8,6 @@ import sketches.CountMinSketch;
 import sketches.SlidingWindowTopList;
 import sketches.TopList;
 import subscription.CacheEntryObservable;
-import static utils.JsonUtil.*;
 
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
@@ -58,7 +55,7 @@ public class CacheImpl implements Cache<CacheEntry>{
         int end = (int) ChronoUnit.DAYS.between(createdDateTime.toLocalDate(), endDateTime.toLocalDate());
         int rangeFrequency = cmr.get(key, start, end);
 
-        return new CacheRangeEntry(key, rangeFrequency, startDateTime.toLocalDate(), endDateTime.toLocalDate());
+        return new CacheRangeEntry(key, rangeFrequency, startDateTime.toLocalDate().toString(), endDateTime.toLocalDate().toString());
 
     }
     public List<CacheEntry> topGet(int days){
@@ -74,7 +71,7 @@ public class CacheImpl implements Cache<CacheEntry>{
 
 
         if(hasKeysExpired(localDateTime)){ //TODO: update expire date in DB if wrapped?
-            int numberOfExpiredKeys = (int) ChronoUnit.DAYS.between(cacheConfig.getExpireDate(), localDateTime.toLocalDate()) % cacheConfig.getExpireDays();
+            int numberOfExpiredKeys = (int) ChronoUnit.DAYS.between(cacheConfig.getExpireDateTime(), localDateTime) % cacheConfig.getExpireDays(); //<-- modifiable
             adjust(key, numberOfExpiredKeys);
         }
 
@@ -87,7 +84,7 @@ public class CacheImpl implements Cache<CacheEntry>{
 
             int pointFrequency = cms.put(keyLevel, daysBetween, amount); //cmr put
             cmr.put(keyLevel, daysBetween, amount); //cms put
-            CachePointEntry cachePointEntry = new CachePointEntry(keyLevel, pointFrequency, localDateTime.toLocalDate());
+            CachePointEntry cachePointEntry = new CachePointEntry(keyLevel, pointFrequency, localDateTime.toLocalDate().toString());
             cacheEntries.add(cachePointEntry);
 
             if(CacheWebSocketHandler.cacheEntryObservables.containsKey(keyLevel)){
@@ -109,7 +106,7 @@ public class CacheImpl implements Cache<CacheEntry>{
         LocalDateTime createdDateTime = cacheConfig.getCreatedAt();
         int daysBetween = (int) ChronoUnit.DAYS.between(createdDateTime.toLocalDate(), localDateTime.toLocalDate());
         int pointFrequency = cms.get(key, daysBetween);
-        return new CachePointEntry(key, pointFrequency, localDateTime.toLocalDate());
+        return new CachePointEntry(key, pointFrequency, localDateTime.toLocalDate().toString());
     }
 
     /*
@@ -118,7 +115,7 @@ public class CacheImpl implements Cache<CacheEntry>{
     * */
 
     protected boolean hasKeysExpired(LocalDateTime localDateTime){
-        return localDateTime.isEqual(cacheConfig.getExpireDate()) || localDateTime.isAfter(cacheConfig.getExpireDate());
+        return localDateTime.isEqual(cacheConfig.getExpireDateTime()) || localDateTime.isAfter(cacheConfig.getExpireDateTime());
     }
     protected void adjust(Object key, int numberOfExpiredKeys){
 

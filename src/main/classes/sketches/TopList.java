@@ -38,7 +38,7 @@ public class TopList{
         while(!copy.isEmpty()){
             TreeMap<String,String> key = copy.poll();
             int frequency = sketch.get(key, dayResidual);
-            entries.add(new CachePointEntry(key, frequency, localDate));
+            entries.add(new CacheEntry(key, frequency));
         }
         return entries;
     }

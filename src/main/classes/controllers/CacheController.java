@@ -64,7 +64,7 @@ public class CacheController {
         LocalDateTime now = LocalDateTime.now();
         int expireDays = cache.getCacheConfig().getExpireDays();
         LocalDateTime expireDateTime = now.plusDays(expireDays);
-        mongoDatabase.getCollection(CACHEKEYS_COLLECTION_NAME).insertOne(Document.parse(toJson(key)).append("createdAt", now.toString()).append("expireAt", expireDateTime.toString()));
+        mongoDatabase.getCollection(CACHEKEYS_COLLECTION_NAME).insertOne(new Document("key", key).append("createdAt", now.toString()).append("expireAt", expireDateTime.toString()).append("name", cacheName));
         return cache.put(key, now, 1);
     }
     public Object getPointEntry(String cacheName, String date, TreeMap<String,String> key) throws RequiresValidDateException, CacheNotFoundException {

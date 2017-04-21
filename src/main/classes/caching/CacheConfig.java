@@ -40,7 +40,7 @@ public class CacheConfig implements Validatable {
         return levels;
     }
     public LocalDateTime getCreatedAt(){ return createdAt; }
-    public LocalDateTime getExpireDate(){ return createdAt.plusDays(getExpireDays()); }
+    public LocalDateTime getExpireDateTime(){ return createdAt.plusDays(getExpireDays()); }
     public void setCreatedAt(LocalDateTime createdAt){
         this.createdAt = createdAt;
     }

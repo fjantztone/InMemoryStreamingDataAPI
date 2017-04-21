@@ -7,9 +7,9 @@ import java.time.LocalDate;
  */
 public class CachePointEntry extends CacheEntry {
 
-    public LocalDate date;
+    public String date;
 
-    public CachePointEntry(Object key, Integer value, LocalDate date) {
+    public CachePointEntry(Object key, Integer value, String date) {
         super(key, value);
         this.date = date;
     }
