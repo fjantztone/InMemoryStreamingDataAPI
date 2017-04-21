@@ -13,7 +13,7 @@ import java.util.Objects;
  */
 public class Subscriber implements Observer{
 
-    protected Session session;
+    private Session session;
 
     public Subscriber(Session session){
         this.session = session;
