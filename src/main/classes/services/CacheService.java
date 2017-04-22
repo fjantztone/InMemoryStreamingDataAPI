@@ -30,53 +30,11 @@ import static utils.JsonUtil.json;
  */
 
 public class CacheService {
-    class AddToCache implements Runnable{
 
-        @Override
-        public void run() {
-
-            TreeMap<String,String> key = new TreeMap<>();
-            key.put("ITEM", "halebop");
-            key.put("RETAILER", "1234");
-            key.put("KOMMANDO", "GSM_REG");
-            LocalDateTime start = LocalDateTime.now();
-            for(int i = 0; i < 30; i++){
-                LocalDateTime current = start.plusDays(i);
-                try {
-                    cacheController.putKey("testar", key, current);
-                    System.out.printf("Adding to cache from %s at date %s", Thread.currentThread().getName(), current);
-                } catch (JsonProcessingException e) {
-                    e.printStackTrace();
-                } catch (CacheNotFoundException e) {
-                    e.printStackTrace();
-                }
-            }
-        }
-    }
     private CacheController cacheController;
     public CacheService(CacheController cacheController){
         this.cacheController = cacheController;
         initializeRoutes();
-
-        /*
-        * Testing
-        *
-        * */
-        boolean debug = true;
-        ExecutorService executor = Executors.newFixedThreadPool(2);
-        if(debug){
-            executor.submit(new AddToCache());
-            executor.submit(new AddToCache());
-        }
-
-        executor.shutdown();
-        try {
-            executor.awaitTermination(5000, TimeUnit.MILLISECONDS);
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }
-
-
     }
     private void initializeRoutes(){
 
