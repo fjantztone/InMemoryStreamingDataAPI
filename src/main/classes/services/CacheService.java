@@ -1,10 +1,17 @@
 package services;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import controllers.CacheController;
+import exceptions.CacheAlreadyExistsException;
+import exceptions.CacheNotFoundException;
+import exceptions.InvalidKeyException;
+import exceptions.RequiresValidDateException;
 import models.CacheConfig;
 
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.TreeMap;
 
 import static spark.Spark.*;
@@ -16,12 +23,38 @@ import static utils.JsonUtil.json;
  * Created by heka1203 on 2017-04-17.
  */
 public class CacheService {
-    protected CacheController cacheController;
+    private CacheController cacheController;
     public CacheService(CacheController cacheController){
         this.cacheController = cacheController;
         initializeRoutes();
+        /*
+        * Testing
+        * */
+        TreeMap<String,String> key = new TreeMap<>();
+        key.put("ITEM", "halebop");
+        key.put("RETAILER", "1234");
+        key.put("KOMMANDO", "GSM_REG");
+        LocalDateTime start = LocalDateTime.now();
+        for(int i = 0; i < 33; i++){
+            LocalDateTime current = start.plusDays(i);
+            try {
+                cacheController.putKey("testar", key, current);
+            } catch (CacheNotFoundException e) {
+                e.printStackTrace();
+            } catch (RequiresValidDateException e) {
+                e.printStackTrace();
+            } catch (InvalidKeyException e) {
+                e.printStackTrace();
+            } catch (JsonProcessingException e) {
+                e.printStackTrace();
+            } catch (CacheAlreadyExistsException e) {
+                e.printStackTrace();
+            }
+        }
+
+
     }
-    protected void initializeRoutes(){
+    private void initializeRoutes(){
 
         path("/api", () -> {
 

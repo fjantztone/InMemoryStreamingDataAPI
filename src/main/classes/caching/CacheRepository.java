@@ -9,7 +9,6 @@ import java.util.concurrent.ConcurrentHashMap;
  * Created by heka1203 on 2017-04-05.
  */
 
-//TODO: Very confusing return types, error handling etc
 public class CacheRepository {
 
     private final Map<String, Cache> caches;

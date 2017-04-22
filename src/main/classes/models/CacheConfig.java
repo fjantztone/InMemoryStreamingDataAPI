@@ -59,6 +59,9 @@ public class CacheConfig{
     public LocalDateTime getCreatedAt() {
         return createdAt;
     }
+    public void setCreatedAt(LocalDateTime createdAt) {
+        this.createdAt = createdAt;
+    }
     @JsonIgnore
     public LocalDateTime getExpireAt(){ return getCreatedAt().plusDays(getTimeToLive()); }
 
