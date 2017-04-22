@@ -1,5 +1,4 @@
 package services;
-
 import caching.CacheEntry;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import models.SubscriberMessage;
@@ -12,7 +11,6 @@ import static models.SubscriberMessage.*;
 import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.logging.Level;
 import java.util.logging.Logger;
 
 
@@ -26,8 +24,9 @@ public class CacheWebSocketHandler {
 
     @OnWebSocketClose
     public void closed(Session session, int statusCode, String reason) {
+        Subscriber subscriber = new Subscriber(session);
         for(CacheEntryObservable cacheEntryObservable : cacheEntryObservables.values()){
-            cacheEntryObservable.removeObserver(new Subscriber(session));
+            cacheEntryObservable.removeObserver(subscriber);
         }
         logger.info(String.format("Client closed socket: (status: %d, reason: %s).", statusCode, reason));
     }
@@ -40,23 +39,15 @@ public class CacheWebSocketHandler {
 
             if(subscriberMessage.getAction().equals(SUBSCRIBE_ACTION)){
                 for(TreeMap<String,String> key : subscriberMessage.getKeys()){
-
-                    CacheEntryObservable cacheEntryObservable = cacheEntryObservables.get(key);
-                    if(cacheEntryObservable == null){
-                        cacheEntryObservable = new CacheEntryObservable(new CacheEntry(key, 0));
-                    }
-                    cacheEntryObservable.addObserver(new Subscriber(session));
-                    cacheEntryObservables.put(key, cacheEntryObservable);
-
+                    Subscriber subscriber = new Subscriber(session);
+                    CacheEntryObservable cacheEntryObservable = new CacheEntryObservable(new CacheEntry(key, 0));
+                    cacheEntryObservables.computeIfAbsent(key, k -> cacheEntryObservable).addObserver(subscriber);
                 }
             }
             if(subscriberMessage.getAction().equals(UNSUBSCRIBE_ACTION)){
                 for(TreeMap<String,String> key : subscriberMessage.getKeys()){
-
-                    CacheEntryObservable cacheEntryObservable = cacheEntryObservables.get(key);
-                    if(cacheEntryObservable != null){
-                        cacheEntryObservable.removeObserver(new Subscriber(session));
-                    }
+                    Subscriber subscriber = new Subscriber(session);
+                    cacheEntryObservables.computeIfPresent(key, (k,c) -> c.removeObserver(subscriber) && c.isEmpty() ? null : c);
                 }
                 session.close();
 

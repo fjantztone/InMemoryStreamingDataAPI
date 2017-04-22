@@ -7,5 +7,6 @@ package subscription;
 public interface Observable {
     public void addObserver(Observer o);
     public boolean removeObserver(Observer o);
+    public boolean isEmpty();
     public void notifyObserver();
 }

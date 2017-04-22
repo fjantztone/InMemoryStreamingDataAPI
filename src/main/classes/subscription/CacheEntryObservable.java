@@ -1,9 +1,9 @@
 package subscription;
 
 import caching.CacheEntry;
-import org.eclipse.jetty.util.ConcurrentHashSet;
-
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 
 
 /**
@@ -12,8 +12,7 @@ import java.io.IOException;
 public class CacheEntryObservable implements Observable {
 
     private CacheEntry cacheEntry;
-    private ConcurrentHashSet<Observer> observers = new ConcurrentHashSet<>();
-
+    private List<Observer> observers = new ArrayList<>();
 
     public CacheEntryObservable(CacheEntry cacheEntry){
         this.cacheEntry = cacheEntry;
@@ -35,12 +34,14 @@ public class CacheEntryObservable implements Observable {
     }
 
     @Override
+    public boolean isEmpty() {
+        return observers.isEmpty();
+    }
+    @Override
     public void notifyObserver() {
         for(Observer observer : observers){
             try {
-                synchronized (Observer.class){
-                    observer.update(this.cacheEntry);
-                }
+                observer.update(this.cacheEntry);
             } catch (IOException e) {
                 e.printStackTrace();
             }

@@ -32,6 +32,7 @@ public class CacheImpl implements Cache<CacheEntry>{
     }
 
     public CacheEntry pointGet(TreeMap<String,String> key, LocalDateTime localDateTime) {
+        System.out.println("GET");
         return get(key, localDateTime);
     }
     public List<CacheEntry> pointsGet(TreeMap<String,String> key, LocalDateTime startDateTime, LocalDateTime endDateTime) {
@@ -64,12 +65,11 @@ public class CacheImpl implements Cache<CacheEntry>{
     public List<CacheEntry> put(TreeMap<String,String> key, LocalDateTime localDateTime, int amount) throws InvalidKeyException {
         validateKey(key);
         LocalDateTime createdDateTime = cacheConfig.getCreatedAt();
-
         int daysBetween = (int) ChronoUnit.DAYS.between(createdDateTime, localDateTime);
 
         List<List<String>> levels = cacheConfig.getLevels();
         List<CacheEntry> cacheEntries = new ArrayList<>(levels.size());
-
+        System.out.println("PUT");
         for(final List level : levels){
             TreeMap<String,String> keyLevel = (TreeMap<String, String>) key.clone();
             keyLevel.keySet().retainAll(level);
@@ -78,14 +78,7 @@ public class CacheImpl implements Cache<CacheEntry>{
             cmr.put(keyLevel, daysBetween, amount); //cms put
             CachePointEntry cachePointEntry = new CachePointEntry(keyLevel, pointFrequency, localDateTime);
             cacheEntries.add(cachePointEntry);
-
-            if(CacheWebSocketHandler.cacheEntryObservables.containsKey(keyLevel)){
-                CacheEntryObservable cacheEntryObservable = CacheWebSocketHandler.cacheEntryObservables.get(keyLevel);
-                synchronized (cacheEntryObservable){
-                    cacheEntryObservable.setValue(pointFrequency);
-                }
-
-            }
+            //CacheWebSocketHandler.cacheEntryObservables.computeIfPresent(keyLevel, (k,c) -> {c.setValue(pointFrequency); return c;});
 
         }
 
