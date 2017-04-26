@@ -45,17 +45,19 @@ public class CacheWebSocketHandler {
                 }
             }
             if(subscriberMessage.getAction().equals(UNSUBSCRIBE_ACTION)){
+                System.out.println("Unsub");
                 for(TreeMap<String,String> key : subscriberMessage.getKeys()){
                     Subscriber subscriber = new Subscriber(session);
                     cacheEntryObservables.computeIfPresent(key, (k,c) -> c.removeObserver(subscriber) && c.isEmpty() ? null : c);
                 }
-                session.close();
+                session.close(); //Questionable
 
             }
 
 
         }
         catch(IOException | IllegalArgumentException e){
+            System.out.println("error");
             logger.info(e.getMessage());
             session.close(400, e.getMessage());
         }

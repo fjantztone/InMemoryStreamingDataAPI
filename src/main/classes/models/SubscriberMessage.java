@@ -2,8 +2,8 @@ package models;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.sun.tools.javac.util.List;
 
+import java.util.List;
 import java.util.TreeMap;
 
 /**

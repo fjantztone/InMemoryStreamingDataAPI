@@ -14,7 +14,7 @@ import java.util.TreeMap;
 public interface Cache<E> {
     E pointGet(TreeMap<String,String> key, LocalDateTime localDateTime);
     List<E> pointsGet(TreeMap<String,String> key, LocalDateTime startDateTime, LocalDateTime endDateTime);
-    E rangeGet(TreeMap<String,String> key, LocalDateTime startDateTime, LocalDateTime endDateTime);
+    List<E> rangeGet(TreeMap<String,String> key, LocalDateTime startDateTime, LocalDateTime endDateTime);
     List<E> topGet(int days);
     List<E> put(TreeMap<String,String> key, LocalDateTime localDateTime, int amount) throws InvalidKeyException;
 

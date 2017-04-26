@@ -25,12 +25,12 @@ public class AppService {
 
     public AppService() throws RequiresValidDateException, CacheAlreadyExistsException, CacheNotFoundException, InvalidKeyException, IOException {
         port(8081);
-        webSocket("/cachestream", CacheWebSocketHandler.class);
+        webSocket("/live", CacheWebSocketHandler.class);
         before((req, res) -> {
             //CORS
-            /*res.header("Access-Control-Allow-Origin", "*");
+            res.header("Access-Control-Allow-Origin", "*");
             res.header("Access-Control-Allow-Methods", "PUT, GET, POST, DELETE");
-            res.header("Access-Control-Allow-Headers: Origin, X-Requested-With", "Content-Type, Accept");*/
+            res.header("Access-Control-Allow-Headers: Origin, X-Requested-With", "Content-Type, Accept");
             res.type("application/json");
         });
         exception(Exception.class, (Exception e, Request req, Response res) -> {

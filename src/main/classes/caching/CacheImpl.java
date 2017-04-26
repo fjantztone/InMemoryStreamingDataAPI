@@ -46,7 +46,7 @@ public class CacheImpl implements Cache<CacheEntry>{
         return cacheEntries;
 
     }
-    public CacheEntry rangeGet(TreeMap<String,String> key, LocalDateTime startDateTime, LocalDateTime endDateTime) {
+    public List<CacheEntry> rangeGet(TreeMap<String,String> key, LocalDateTime startDateTime, LocalDateTime endDateTime) {
 
         LocalDateTime createdDateTime = cacheConfig.getCreatedAt();//cache created date
 
@@ -54,7 +54,7 @@ public class CacheImpl implements Cache<CacheEntry>{
         int end = (int) ChronoUnit.DAYS.between(createdDateTime, endDateTime);
         int rangeFrequency = cmr.get(key, start, end);
 
-        return new CacheRangeEntry(key, rangeFrequency, startDateTime, endDateTime);
+        return Arrays.asList(new CacheRangeEntry(key, rangeFrequency, startDateTime, endDateTime));
 
     }
     public List<CacheEntry> topGet(int days){
@@ -71,6 +71,7 @@ public class CacheImpl implements Cache<CacheEntry>{
         List<CacheEntry> cacheEntries = new ArrayList<>(levels.size());
 
         for(final List level : levels){
+            @SuppressWarnings("unchecked")
             TreeMap<String,String> keyLevel = (TreeMap<String, String>) key.clone();
             keyLevel.keySet().retainAll(level);
 
