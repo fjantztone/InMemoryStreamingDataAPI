@@ -16,7 +16,9 @@ import models.Key;
 import org.bson.Document;
 
 import java.io.IOException;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.logging.Logger;
@@ -98,10 +100,8 @@ public class CacheController {
         if(cache == null)
             throw new CacheNotFoundException(String.format("Cache with name: %s does not exist. You can create a new cache at route: /api/cache.", cacheName));
 
-        Key keyObj = new Key(key, now);
-        Document filter = new Document("name", cacheName);
-        Document update = new Document("$push", new Document("keys", Document.parse(toJson(keyObj))));
-        mongoDatabase.getCollection(CACHEKEYS_COLLECTION_NAME).updateOne(filter, update);
+        //Key keyObj = new Key(key, cacheName, now);
+        //mongoDatabase.getCollection(CACHEKEYS_COLLECTION_NAME).insertOne(Document.parse(toJson(keyObj)));
 
         return cache.pointGet(key, now);
     }
@@ -141,30 +141,25 @@ public class CacheController {
     }
 
     private void initialize() throws InvalidKeyException, IOException {
-
         FindIterable<Document> cacheConfigs = mongoDatabase.getCollection(CACHECONFIGS_COLLECTION_NAME).find();
         ObjectMapper objectMapper = new ObjectMapper();
 
         for(Document dcc : cacheConfigs){
+
             CacheConfig cacheConfig = objectMapper.readValue(dcc.toJson(), CacheConfig.class);
             Cache cache = new CacheImpl(cacheConfig);
             String cacheName = cacheConfig.getName();
 
-            Document dcck = mongoDatabase.getCollection(CACHEKEYS_COLLECTION_NAME).aggregate(Arrays.asList(
-               new Document("$match", new Document("name", cacheName)),
-               new Document("$project", new Document("keys", new Document("$filter", new Document("input", "$keys").append("as", "key").append("cond", new Document("$gte", Arrays.asList("$$key.createdAt", toDate(cacheConfig.getCreatedAt())))))))
-            )).first();
-
-            if(dcck != null){
-                @SuppressWarnings("unchecked")
-                List<Document> cacheKeys = (List<Document>)dcck.get("keys");
-
-                for(Document cacheKey : cacheKeys){
-                    Key key = objectMapper.readValue(cacheKey.toJson(), Key.class);
-                    cache.put(key.getKey(), key.getCreatedAt(), 1);
-                }
-                logger.info(String.format("Loaded %d keys into %s.", cacheKeys.size(), cacheName));
+            FindIterable<Document> cacheKeys = mongoDatabase.getCollection(CACHEKEYS_COLLECTION_NAME).find(new Document("cacheName", cacheName)).projection(new Document("_id", 0));
+            int numberOfKeys = 0;
+            for(Document cacheKey : cacheKeys){
+                Key key = objectMapper.readValue(cacheKey.toJson(), Key.class);
+                cache.put(key.getKey(), key.getCreatedAt(), 1);
+                numberOfKeys++;
             }
+
+            logger.info(String.format("Loaded %d keys into %s.", numberOfKeys, cacheName));
+
             caches.put(cacheName, cache);
 
         }

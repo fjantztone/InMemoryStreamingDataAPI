@@ -17,8 +17,11 @@ public class CountMinRange{
             sketches.add(new CountMinSketch(width, depth, new FNV()));
     }
     public void put(Object key, int days, int amount){
-        for(int i = 0; i < numberOfSketches; i++)
-            sketches.get(i).put(key, days/ (1 << i), amount);
+        for(int i = 0; i < numberOfSketches; i++){
+            int granularity = days / (1 << i);
+            sketches.get(i).put(key, granularity, amount);
+        }
+
     }
     public void remove(Object key, int days){
         for(int i = 0; i < numberOfSketches; i++)
@@ -30,6 +33,7 @@ public class CountMinRange{
         for(DyadicInterval d : DyadicInterval.createIntervals(start, end, numberOfSketches)){
             frequency += sketches.get(d.level).get(key, d.start);
         }
+
         return frequency;
     }
 

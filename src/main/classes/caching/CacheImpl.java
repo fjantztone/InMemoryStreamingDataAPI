@@ -11,6 +11,8 @@ import sketches.TopList;
 import subscription.CacheEntryObservable;
 
 import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.ZoneOffset;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.logging.Logger;
@@ -53,7 +55,6 @@ public class CacheImpl implements Cache<CacheEntry>{
         int start = (int) ChronoUnit.DAYS.between(createdDateTime, startDateTime);
         int end = (int) ChronoUnit.DAYS.between(createdDateTime, endDateTime);
         int rangeFrequency = cmr.get(key, start, end);
-
         return Arrays.asList(new CacheRangeEntry(key, rangeFrequency, startDateTime, endDateTime));
 
     }
@@ -65,8 +66,8 @@ public class CacheImpl implements Cache<CacheEntry>{
     public List<CacheEntry> put(TreeMap<String,String> key, LocalDateTime localDateTime, int amount) throws InvalidKeyException {
         validateKey(key);
         LocalDateTime createdDateTime = cacheConfig.getCreatedAt();
-        int daysBetween = (int) ChronoUnit.DAYS.between(createdDateTime, localDateTime);
 
+        int daysBetween = (int) ChronoUnit.DAYS.between(createdDateTime, localDateTime);
         List<List<String>> levels = cacheConfig.getLevels();
         List<CacheEntry> cacheEntries = new ArrayList<>(levels.size());
 
@@ -74,7 +75,6 @@ public class CacheImpl implements Cache<CacheEntry>{
             @SuppressWarnings("unchecked")
             TreeMap<String,String> keyLevel = (TreeMap<String, String>) key.clone();
             keyLevel.keySet().retainAll(level);
-
             int pointFrequency = cms.put(keyLevel, daysBetween, amount); //cmr put
             cmr.put(keyLevel, daysBetween, amount); //cms put
             CachePointEntry cachePointEntry = new CachePointEntry(keyLevel, pointFrequency, localDateTime);
@@ -113,9 +113,9 @@ public class CacheImpl implements Cache<CacheEntry>{
             throw new InvalidKeyException(String.format("The provided key does not match the required attributes (%s).", attributes));
     }
     private void initializeSketches() {
-        final int width = 1 << 14; //TODO: Make user defined, based on measurements?
+        final int width = /*1 << 14*/ 1 << 10; //TODO: Make user defined, based on measurements?
         final int depth = 4;
-        final int numberOfSketches = (int)Math.ceil(cacheConfig.getTimeToLive() / Math.log(2)); //argument to constructor
+        final int numberOfSketches = (int)Math.ceil(Math.log(cacheConfig.getTimeToLive()) / Math.log(2)); //argument to constructor
         this.cms = new CountMinSketch(width, depth, new FNV());
         this.cmr = new CountMinRange(width, depth, numberOfSketches);
         this.swt = new SlidingWindowTopList(7, 5); //TODO: user-defined

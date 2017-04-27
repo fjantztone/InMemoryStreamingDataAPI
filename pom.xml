@@ -77,6 +77,12 @@
             <artifactId>jackson-annotations</artifactId>
             <version>2.9.0.pr2</version>
         </dependency>
+        <!-- https://mvnrepository.com/artifact/com.sangupta/murmur -->
+        <dependency>
+            <groupId>com.sangupta</groupId>
+            <artifactId>murmur</artifactId>
+            <version>1.0.0</version>
+        </dependency>
 
 
     </dependencies>
