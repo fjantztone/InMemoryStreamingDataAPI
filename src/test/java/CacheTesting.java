@@ -34,7 +34,7 @@ public class CacheTesting {
     public static final String CACHE_NAME = "tests";
     public static final String BASE_URL = "http://localhost:8081/api/cache/" + CACHE_NAME;
     public static Logger logger = Logger.getLogger(CacheTesting.class.getName());
-    public static final int WIDTH = 1 << 10;
+    public static final int WIDTH = 1 << 12;
     public static final int N = 1 << 2;
 
     @BeforeClass

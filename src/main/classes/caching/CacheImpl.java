@@ -8,11 +8,8 @@ import sketches.CountMinRange;
 import sketches.CountMinSketch;
 import sketches.SlidingWindowTopList;
 import sketches.TopList;
-import subscription.CacheEntryObservable;
 
 import java.time.LocalDateTime;
-import java.time.ZoneId;
-import java.time.ZoneOffset;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.logging.Logger;
@@ -113,7 +110,7 @@ public class CacheImpl implements Cache<CacheEntry>{
             throw new InvalidKeyException(String.format("The provided key does not match the required attributes (%s).", attributes));
     }
     private void initializeSketches() {
-        final int width = /*1 << 14*/ 1 << 10; //TODO: Make user defined, based on measurements?
+        final int width = /*1 << 14*/ 1 << 12; //TODO: Make user defined, based on measurements?
         final int depth = 4;
         final int numberOfSketches = (int)Math.ceil(Math.log(cacheConfig.getTimeToLive()) / Math.log(2)); //argument to constructor
         this.cms = new CountMinSketch(width, depth, new FNV());

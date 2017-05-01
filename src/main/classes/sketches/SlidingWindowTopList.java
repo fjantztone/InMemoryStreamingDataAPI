@@ -30,9 +30,9 @@ public class SlidingWindowTopList {
         int diff = dayResidual - prevDayResidual;
 
         if(hasTimeUnitPassed(diff)){
-            if(diff > 1){
+            /*if(diff > 1){
                 for(int i = 0; i < diff && !queue.isEmpty(); queue.remove()); //remove old
-            }
+            }*/
             queue.add(new TopList(numberOfItems, dayResidual));
             prevDayResidual = dayResidual;
         }

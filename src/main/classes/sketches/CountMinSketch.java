@@ -43,14 +43,13 @@ public class CountMinSketch {
 
     public int put(Object key, int days, int amount){
         int min = Integer.MAX_VALUE;
-        String id = key.toString() + String.valueOf(days);
+        String id = key.toString();
         fnv.set(id);
 
         for(int i = 0; i != depth; i++){
-            int hash = fnv.next();
+            int hash = fnv.next() * (days + 1);
             if(hash < 0)
                 hash = ~hash;
-            //int hash = fnv.next() % width;
 
             int index = i*width + (hash % width);
             register[index] += amount;
