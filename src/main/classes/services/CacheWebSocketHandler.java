@@ -1,5 +1,6 @@
 package services;
 import caching.CacheEntry;
+import caching.CacheTickEntry;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import models.SubscriberMessage;
 import org.eclipse.jetty.websocket.api.*;
@@ -9,6 +10,7 @@ import subscription.Subscriber;
 import static models.SubscriberMessage.*;
 
 import java.io.IOException;
+import java.time.LocalDateTime;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.logging.Logger;
@@ -23,7 +25,7 @@ public class CacheWebSocketHandler {
     public void connected(Session session) {session.setIdleTimeout(1000 * 60 * 5);} //currently: drop after 5 min inactivity
 
     @OnWebSocketClose
-    public void closed(Session session, int statusCode, String reason) {
+    public void closed(Session session, int statusCode, String reason) {  //<-- make TS?
         Subscriber subscriber = new Subscriber(session);
         for(CacheEntryObservable cacheEntryObservable : cacheEntryObservables.values()){
             cacheEntryObservable.removeObserver(subscriber);
@@ -40,7 +42,7 @@ public class CacheWebSocketHandler {
             if(subscriberMessage.getAction().equals(SUBSCRIBE_ACTION)){
                 for(TreeMap<String,String> key : subscriberMessage.getKeys()){
                     Subscriber subscriber = new Subscriber(session);
-                    CacheEntryObservable cacheEntryObservable = new CacheEntryObservable(new CacheEntry(key, 0));
+                    CacheEntryObservable cacheEntryObservable = new CacheEntryObservable(new CacheTickEntry(key, 0, LocalDateTime.now()));
                     cacheEntryObservables.computeIfAbsent(key, k -> cacheEntryObservable).addObserver(subscriber);
                 }
             }
@@ -49,7 +51,8 @@ public class CacheWebSocketHandler {
                     Subscriber subscriber = new Subscriber(session);
                     cacheEntryObservables.computeIfPresent(key, (k,c) -> c.removeObserver(subscriber) && c.isEmpty() ? null : c);
                 }
-                session.close(); //Questionable
+
+                //session.close(); //Questionable
 
             }
 

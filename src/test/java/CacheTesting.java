@@ -3,6 +3,7 @@
  */
 import caching.CacheEntry;
 import caching.CacheRangeEntry;
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import common.ResponseError;
@@ -23,29 +24,20 @@ import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.sql.SQLException;
-import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.*;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
 public class CacheTesting {
-    public static final String CACHE_NAME = "tests";
+    public static final String CACHE_NAME = "jens";
     public static final String BASE_URL = "http://localhost:8081/api/cache/" + CACHE_NAME;
     public static Logger logger = Logger.getLogger(CacheTesting.class.getName());
     public static final int WIDTH = 1 << 12;
     public static final int N = 1 << 2;
-
-    @BeforeClass
-    public static void beforeClass() throws SQLException, ClassNotFoundException {
-        Main.main(null);
-        Spark.awaitInitialization();
-
-    }
-
-    @Test
-    public void rangeQueryErrorTest() throws IOException, SQLException { // url: /api/cache/oskar/filter/range/startdate/2017-04-21T20:14:02/enddate/2017-04-24T20:14:02/key/{"ITEM" : "qneher", "RETAILER" : "1234"}
         /*
         * TOP 5
              2998_GPRS298288561GSM_REG_TJANST |      82628
@@ -54,13 +46,24 @@ public class CacheTesting {
              8506_SS4288561GSM_REG_TJANST     |      26103
              RK007380GSM_REG                  |      24941
         * */
-        List<TreeMap<String,String>> keys = new ArrayList<TreeMap<String,String>>(){{
-            add(new TreeMap<String,String>(){{put("ITEM", "2998_GPRS298"); put("RETAILER", "288561"); put("KOMMANDO", "GSM_REG_TJANST");}});
-            add(new TreeMap<String,String>(){{put("ITEM", "7214_HB4"); put("RETAILER", "288561"); put("KOMMANDO", "GSM_REG_TJANST");}});
-            add(new TreeMap<String,String>(){{put("ITEM", "9220_SPOT3"); put("RETAILER", "288561"); put("KOMMANDO", "GSM_REG_TJANST");}});
-            add(new TreeMap<String,String>(){{put("ITEM", "8506_SS4"); put("RETAILER", "288561"); put("KOMMANDO", "GSM_REG_TJANST");}});
-            add(new TreeMap<String,String>(){{put("ITEM", "RK"); put("RETAILER", "007380"); put("KOMMANDO", "GSM_REG");}});
-        }};
+    public static List<TreeMap<String,String>> TOP_KEYS = new ArrayList<TreeMap<String,String>>(){{
+        add(new TreeMap<String,String>(){{put("ITEM", "2998_GPRS298"); put("RETAILER", "288561"); put("KOMMANDO", "GSM_REG_TJANST");}});
+        add(new TreeMap<String,String>(){{put("ITEM", "7214_HB4"); put("RETAILER", "288561"); put("KOMMANDO", "GSM_REG_TJANST");}});
+        add(new TreeMap<String,String>(){{put("ITEM", "9220_SPOT3"); put("RETAILER", "288561"); put("KOMMANDO", "GSM_REG_TJANST");}});
+        add(new TreeMap<String,String>(){{put("ITEM", "8506_SS4"); put("RETAILER", "288561"); put("KOMMANDO", "GSM_REG_TJANST");}});
+        add(new TreeMap<String,String>(){{put("ITEM", "RK"); put("RETAILER", "007380"); put("KOMMANDO", "GSM_REG");}});
+    }};
+
+    @BeforeClass
+    public static void beforeClass() throws SQLException, ClassNotFoundException {
+        Main.main(null);
+        Spark.awaitInitialization();
+
+    }
+
+    /*@Test*/
+    /*public void rangeQueryErrorTest() throws IOException, SQLException { // url: /api/cache/oskar/filter/range/startdate/2017-04-21T20:14:02/enddate/2017-04-24T20:14:02/key/{"ITEM" : "qneher", "RETAILER" : "1234"}
+
         List<String> measurements = new ArrayList<>();
         measurements.add("range,mape,width");
 
@@ -70,7 +73,7 @@ public class CacheTesting {
             LocalDateTime end = start.plusDays(rangeSize);
             int estimatedValue = 0;
             int trueValue = 0;
-            for(TreeMap<String,String> key : keys){
+            for(TreeMap<String,String> key : TOP_KEYS){
                 String jsonKey = objectMapper.writeValueAsString(key);
                 String path = "/filter/range" + "/startdate/" + start.toString() + "/enddate/" + end.toString() + "/key/" + jsonKey;
                 TestResponse testResponse = jsonRequest("GET", path, null);
@@ -84,15 +87,47 @@ public class CacheTesting {
                     estimatedValue += (int)cacheRangeEntries.get(0).getValue();
                     trueValue += MongoUtil.rangeQuery(key, start, end);
                 }
-                /*int trueValue = SQLUtil.rangeQuery(key, start, end);
-                System.out.println(trueValue);*/
+
             }
             final double mape = ((double)Math.abs(estimatedValue - trueValue) / trueValue) * 100; //MAPE in %
             measurements.add(String.format(Locale.US, "%d,%.2f,%d", rangeSize, mape, WIDTH));
         }
         Files.write(Paths.get(String.format("/Users/heka1203/Desktop/exjobb/measurements/range_error_w=%d.txt", WIDTH)), measurements);
         System.out.println(measurements);
+    }*/
+
+    @Test
+    public void webSocketTest(){
+
+        ExecutorService executorService = Executors.newSingleThreadExecutor();
+        executorService.execute(new RequestTask());
+        while(!executorService.isTerminated()){}
+        System.out.println("Terminated");
+
+
     }
+    class RequestTask implements Runnable{
+        @Override
+        public void run() {
+            while(true){
+
+                try {
+                    Random random = new Random();
+                    Thread.sleep(random.nextInt(150));
+                    TreeMap<String,String> key = TOP_KEYS.get(random.nextInt(TOP_KEYS.size()));
+                    ObjectMapper objectMapper = new ObjectMapper();
+                    TestResponse testResponse = jsonRequest("POST", "", objectMapper.writeValueAsString(key));
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                } catch (JsonProcessingException e) {
+                    e.printStackTrace();
+                }
+
+            }
+
+        }
+    }
+
     /*@Test
     public void topQueryErrorTest() throws SQLException, IOException {
         LocalDate end = LocalDate.parse("2017-01-31");
@@ -173,4 +208,5 @@ public class CacheTesting {
             this.body = body;
         }
     }
+
 }

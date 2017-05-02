@@ -10,6 +10,7 @@ import sketches.SlidingWindowTopList;
 import sketches.TopList;
 
 import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.logging.Logger;
@@ -21,6 +22,7 @@ import java.util.logging.Logger;
 public class CacheImpl implements Cache<CacheEntry>{
     private static Logger logger = Logger.getLogger(CacheImpl.class.getName());
     private CountMinSketch cms;
+    private CountMinSketch cmsTick;
     private CountMinRange cmr;
     private SlidingWindowTopList swt;
     private CacheConfig cacheConfig;
@@ -38,6 +40,7 @@ public class CacheImpl implements Cache<CacheEntry>{
 
         List<CacheEntry> cacheEntries = new ArrayList<>();
         int daysBetween = (int) ChronoUnit.DAYS.between(startDateTime, endDateTime);
+
         for(int plusDays = 0; plusDays <= daysBetween; plusDays++){
             LocalDateTime current = startDateTime.plusDays(plusDays);
             cacheEntries.add(get(key, current));
@@ -65,6 +68,7 @@ public class CacheImpl implements Cache<CacheEntry>{
         LocalDateTime createdDateTime = cacheConfig.getCreatedAt();
 
         int daysBetween = (int) ChronoUnit.DAYS.between(createdDateTime, localDateTime);
+        int secondsBetween = (int) ChronoUnit.SECONDS.between(createdDateTime, localDateTime) / CacheTickEntry.TICK_LENGTH;
         List<List<String>> levels = cacheConfig.getLevels();
         List<CacheEntry> cacheEntries = new ArrayList<>(levels.size());
 
@@ -73,10 +77,11 @@ public class CacheImpl implements Cache<CacheEntry>{
             TreeMap<String,String> keyLevel = (TreeMap<String, String>) key.clone();
             keyLevel.keySet().retainAll(level);
             int pointFrequency = cms.put(keyLevel, daysBetween, amount); //cmr put
+            int pointFrequency2 = cmsTick.put(keyLevel, secondsBetween, amount);
             cmr.put(keyLevel, daysBetween, amount); //cms put
             CachePointEntry cachePointEntry = new CachePointEntry(keyLevel, pointFrequency, localDateTime);
             cacheEntries.add(cachePointEntry);
-            CacheWebSocketHandler.cacheEntryObservables.computeIfPresent(keyLevel, (k,c) -> {c.setValue(pointFrequency); return c;});
+            CacheWebSocketHandler.cacheEntryObservables.computeIfPresent(keyLevel, (k,c) -> {c.setValue(pointFrequency2, localDateTime); return c;});
 
         }
 
@@ -114,6 +119,7 @@ public class CacheImpl implements Cache<CacheEntry>{
         final int depth = 4;
         final int numberOfSketches = (int)Math.ceil(Math.log(cacheConfig.getTimeToLive()) / Math.log(2)); //argument to constructor
         this.cms = new CountMinSketch(width, depth, new FNV());
+        this.cmsTick = new CountMinSketch(width, depth, new FNV());
         this.cmr = new CountMinRange(width, depth, numberOfSketches);
         this.swt = new SlidingWindowTopList(7, 5); //TODO: user-defined
     }

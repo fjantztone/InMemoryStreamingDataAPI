@@ -1,7 +1,11 @@
 package subscription;
 
 import caching.CacheEntry;
+import caching.CacheTickEntry;
+
 import java.io.IOException;
+import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -11,16 +15,23 @@ import java.util.List;
  */
 public class CacheEntryObservable implements Observable {
 
-    private CacheEntry cacheEntry;
+    private CacheTickEntry cacheEntry;
     private List<Observer> observers = new ArrayList<>();
 
-    public CacheEntryObservable(CacheEntry cacheEntry){
+    public CacheEntryObservable(CacheTickEntry cacheEntry){
         this.cacheEntry = cacheEntry;
     }
 
-    public void setValue(int value){
+    public void setValue(int value, LocalDateTime nextTick){
+        LocalDateTime oldTick = cacheEntry.getTick();
+        int diff = (int) ChronoUnit.SECONDS.between(oldTick, nextTick);
+        if(diff > CacheTickEntry.TICK_LENGTH){
+            notifyObserver();
+            cacheEntry.setTick(nextTick);
+        }
         cacheEntry.setValue(value);
-        notifyObserver();
+
+
     }
 
     @Override

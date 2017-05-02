@@ -2,6 +2,7 @@ package subscription;
 
 
 import caching.CacheEntry;
+import caching.CacheTickEntry;
 import org.eclipse.jetty.websocket.api.Session;
 import static utils.JsonUtil.toJson;
 
@@ -22,7 +23,7 @@ public class Subscriber implements Observer{
     @Override
     public void update(Object object) throws IOException {
         @SuppressWarnings("unchecked")
-        CacheEntry cacheEntry = (CacheEntry)object;
+        CacheTickEntry cacheEntry = (CacheTickEntry)object;
         session.getRemote().sendString(toJson(Arrays.asList(cacheEntry)));
     }
     @Override
