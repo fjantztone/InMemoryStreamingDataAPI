@@ -30,9 +30,6 @@ public class SlidingWindowTopList {
         int diff = dayResidual - prevDayResidual;
 
         if(hasTimeUnitPassed(diff)){
-            /*if(diff > 1){
-                for(int i = 0; i < diff && !queue.isEmpty(); queue.remove()); //remove old
-            }*/
             queue.add(new TopList(numberOfItems, dayResidual));
             prevDayResidual = dayResidual;
         }
@@ -45,14 +42,14 @@ public class SlidingWindowTopList {
         validateDays(days);
         CircularFifoQueue<TopList> copy = new CircularFifoQueue(queue);
         TopList topList = null;
-        for(int day = 0; day < window - (days - 1) && !copy.isEmpty(); topList = copy.poll(), days++){}
+        for(int day = 0; day < window - (days - 1); topList = copy.poll(), days++){}
         return  topList;
     }
-    protected void validateDays(int days){
+    private void validateDays(int days){
         if (days > window || days <= 0)
             throw new IllegalArgumentException("Number of days must be between 1 and "+window+".");
     }
-    protected boolean hasTimeUnitPassed(int diff){
+    private boolean hasTimeUnitPassed(int diff){
         return diff > 0 || diff < 0;
     }
 

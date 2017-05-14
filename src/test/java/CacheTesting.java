@@ -6,14 +6,17 @@ import caching.CacheRangeEntry;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.mongodb.client.MongoIterable;
 import common.ResponseError;
 
 import static com.sun.tools.internal.ws.wsdl.parser.Util.fail;
 
+import org.bson.Document;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import spark.Spark;
 import spark.utils.IOUtils;
+import utils.JsonUtil;
 
 import java.io.BufferedInputStream;
 import java.io.IOException;
@@ -33,7 +36,7 @@ import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
 public class CacheTesting {
-    public static final String CACHE_NAME = "jens";
+    public static final String CACHE_NAME = "tests";
     public static final String BASE_URL = "http://localhost:8081/api/cache/" + CACHE_NAME;
     public static Logger logger = Logger.getLogger(CacheTesting.class.getName());
     public static final int WIDTH = 1 << 12;
@@ -62,7 +65,7 @@ public class CacheTesting {
     }
 
     /*@Test*/
-    /*public void rangeQueryErrorTest() throws IOException, SQLException { // url: /api/cache/oskar/filter/range/startdate/2017-04-21T20:14:02/enddate/2017-04-24T20:14:02/key/{"ITEM" : "qneher", "RETAILER" : "1234"}
+    /*public void rangeQueryErrorTest() throws IOException { // url: /api/cache/oskar/filter/range/startdate/2017-04-21T20:14:02/enddate/2017-04-24T20:14:02/key/{"ITEM" : "qneher", "RETAILER" : "1234"}
 
         List<String> measurements = new ArrayList<>();
         measurements.add("range,mape,width");
@@ -96,7 +99,7 @@ public class CacheTesting {
         System.out.println(measurements);
     }*/
 
-    @Test
+    //@Test
     public void webSocketTest(){
 
         ExecutorService executorService = Executors.newSingleThreadExecutor();
@@ -144,13 +147,62 @@ public class CacheTesting {
                     List<CacheEntry> estimatedCacheEntries = objectMapper.readValue(testResponse.body, new TypeReference<List<CacheEntry>>(){});
                     List<CacheEntry> trueCacheEntries = SQLUtil.topQuery(start, end, N);
 
-                    calculateTopError(trueCacheEntries, estimatedCacheEntries);
+                    calculateCorrectlyEstimated(trueCacheEntries, estimatedCacheEntries);
                 }
 
         }
     }*/
-    public static double calculateTopError(List<CacheEntry> trueCacheEntries, List<CacheEntry> estimatedCacheEntries){
-        if(trueCacheEntries.size() != estimatedCacheEntries.size()) return 1f;
+    @Test
+    public void testTopQueryError() throws IOException {
+        final int k = 32;
+        LocalDateTime end = LocalDateTime.parse("2017-01-31T10:10:00");
+        ObjectMapper objectMapper = new ObjectMapper();
+        List<String> measurements = new ArrayList<>();
+        for(int day = 0; day < 7; day++){
+            LocalDateTime start = end.minusDays(day);
+            String path = String.format("/filter/top/days/%d", day+1);
+            TestResponse testResponse = jsonRequest("GET", path, null);
+            if(testResponse.status != 200){
+                ResponseError responseError = objectMapper.readValue(testResponse.body, ResponseError.class);
+                logger.info(responseError.getMessage());
+            }
+            else{
+                List<CacheEntry> estimatedCacheEntries = objectMapper.readValue(testResponse.body, new TypeReference<List<CacheEntry<TreeMap<String,String>, Integer>>>(){});
+                MongoIterable<Document> trueTopList = MongoUtil.topQuery(start, end, k);
+                List<CacheEntry> trueCacheEntries = trueTopList.map(doc -> {
+                    try {
+                        String json = doc.toJson();
+                        //dirty
+                        json = json.replaceAll("_id", "key");
+                        json = json.replaceAll("count", "value");
+                        CacheEntry cacheEntry = objectMapper.readValue(json, new TypeReference<CacheEntry<TreeMap<String,String>, Integer>>(){});
+
+                        return cacheEntry;
+                    }  catch (IOException e) {
+                        e.printStackTrace();
+                        return null;
+                    }
+                }).into(new ArrayList<>());
+
+                final double ce =calculateCorrectlyEstimated(trueCacheEntries, estimatedCacheEntries);
+                String measurement = String.format(Locale.US, "%f,%d", ce, k);
+                System.out.println(measurement);
+                measurements.add(measurement);
+                /*for(int i = 0; i < estimatedCacheEntries.size(); i++){
+                    TreeMap<String,String> esimatedKey = (TreeMap<String,String>)estimatedCacheEntries.get(i).getKey();
+                    TreeMap<String,String> trueKey = (TreeMap<String,String>)trueCacheEntries.get(i).getKey();
+                    System.out.printf("%s\n", esimatedKey.toString().equals(trueKey.toString()));
+                }
+                System.out.println();
+                System.out.println();*/
+            }
+
+        }
+        Files.write(Paths.get(String.format("/Users/heka1203/Desktop/exjobb/measurements/top_error_k=%d.txt", k)), measurements);
+
+    }
+    public static double calculateCorrectlyEstimated(List<CacheEntry> trueCacheEntries, List<CacheEntry> estimatedCacheEntries){
+        if(trueCacheEntries.size() != estimatedCacheEntries.size()) return 100f;
         double correct = 0f;
         double total = trueCacheEntries.size();
 
@@ -158,12 +210,12 @@ public class CacheTesting {
         List<String> estimatedKeys = estimatedCacheEntries.stream().map(cacheEntry -> cacheEntry.getKey().toString()).collect(Collectors.toList());
         for(int i = 0; i < trueKeys.size(); i++){
             String trueKey = trueKeys.get(i);
-            String estimatedKey = trueKeys.get(i);
+            String estimatedKey = estimatedKeys.get(i);
             if(trueKey.equals(estimatedKey)) correct += 1f;
             else if(trueKeys.contains(estimatedKey)) correct += 0.5f;
         }
-        System.out.printf("total: %.f, correct: %.f", total, correct);
-        return correct / total;
+        //System.out.printf("Total: %f, correct: %f\n", total, correct);
+        return 100f * ((total-correct) / total);
     }
 
     private TestResponse jsonRequest(String method, String path, String json){

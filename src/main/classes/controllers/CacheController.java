@@ -149,8 +149,11 @@ public class CacheController {
             CacheConfig cacheConfig = objectMapper.readValue(dcc.toJson(), CacheConfig.class);
             Cache cache = new CacheImpl(cacheConfig);
             String cacheName = cacheConfig.getName();
-            if(!cacheName.equals("tests")){
-                FindIterable<Document> cacheKeys = mongoDatabase.getCollection(CACHEKEYS_COLLECTION_NAME).find(new Document("cacheName", cacheName)).projection(new Document("_id", 0));
+            /*if(!cacheName.equals("tests")){*/
+                FindIterable<Document> cacheKeys = mongoDatabase.getCollection(CACHEKEYS_COLLECTION_NAME)
+                        .find(new Document("cacheName", cacheName))
+                        .projection(new Document("_id", 0))
+                        .sort(new Document("createdAt", 1));
                 int numberOfKeys = 0;
                 for(Document cacheKey : cacheKeys){
                     Key key = objectMapper.readValue(cacheKey.toJson(), Key.class);
@@ -162,7 +165,6 @@ public class CacheController {
 
                 caches.put(cacheName, cache);
 
-            }
 
         }
         logger.info(String.format("Loaded %d caches.", caches.size()));

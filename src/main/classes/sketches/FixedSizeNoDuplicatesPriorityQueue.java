@@ -16,9 +16,10 @@ public class FixedSizeNoDuplicatesPriorityQueue<E> extends PriorityQueue<E> {
 
     private void adjust(){
         while(size() > maxSize){
-            Optional<E> min = this.stream().min(comparator());
+            /*Optional<E> min = this.stream().min(comparator());
             if(min.isPresent())
-                remove(min.get());
+                remove(min.get());*/
+            super.remove();
         }
     }
     @Override
@@ -28,7 +29,6 @@ public class FixedSizeNoDuplicatesPriorityQueue<E> extends PriorityQueue<E> {
             isAdded = super.add(e);
             adjust();
         }
-
 
         return isAdded;
     }

@@ -25,7 +25,7 @@ public class CountMinRange{
     }
     public void remove(Object key, int days){
         for(int i = 0; i < numberOfSketches; i++)
-            sketches.get(i).remove(key, days/ (1 << i));
+            sketches.get(i).remove(key, days / (1 << i));
     }
 
     public int get(Object key, int start, int end){

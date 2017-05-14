@@ -121,7 +121,7 @@ public class CacheImpl implements Cache<CacheEntry>{
         this.cms = new CountMinSketch(width, depth, new FNV());
         this.cmsTick = new CountMinSketch(width, depth, new FNV());
         this.cmr = new CountMinRange(width, depth, numberOfSketches);
-        this.swt = new SlidingWindowTopList(7, 5); //TODO: user-defined
+        this.swt = new SlidingWindowTopList(7, 32); //TODO: user-defined
     }
     @Override
     public void setCacheConfig(CacheConfig cacheConfig) {
